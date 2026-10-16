@@ -65,7 +65,18 @@ public class ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger
         }
         catch (Exception ex)
         {
-            logger.Error($"{LogPrefix} Failed to read config.json, using an empty config / Falha ao ler config.json: {ex.Message}");
+            // Keep the broken file, otherwise the next save from the page would overwrite the user's entries
+            var backup = ConfigPath + ".broken-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json";
+            try
+            {
+                File.Copy(ConfigPath, backup, overwrite: false);
+            }
+            catch
+            {
+                backup = "(backup failed)";
+            }
+
+            logger.Error($"{LogPrefix} Failed to read config.json, using an empty config. Your file was copied to {backup}. Error: {ex.Message}");
             Config = new LootPoolConfig();
         }
     }

@@ -85,6 +85,15 @@ public sealed class ItemCatalogService(TemplateTable templateTable, LocaleServic
         _englishNames = englishNames;
     }
 
+    /// <summary>Picks up items other mods add after the server started</summary>
+    public void EnsureFresh()
+    {
+        if (templateTable.Items.Count(kv => string.Equals(kv.Value.Type, "Item", StringComparison.OrdinalIgnoreCase)) != _items.Count)
+        {
+            Build();
+        }
+    }
+
     public CatalogItem? Get(string? id)
     {
         if (string.IsNullOrWhiteSpace(id))

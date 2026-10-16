@@ -174,9 +174,24 @@
                         </div>
                         <div class="clp-card-tools">
                             <MudSwitch T="bool" Value="@e.Enabled" ValueChanged="@(v => e.Enabled = v)" Color="Color.Warning" />
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Title="@T("Remover", "Remove")" OnClick="() => Remove(e)" />
+                            <MudTooltip Text="@T("Remover", "Remove")">
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" OnClick="() => Remove(e)" />
+                            </MudTooltip>
                         </div>
                     </div>
+
+                    @if (item is not null && Injection.GetItemWarnings(e.Tpl) is { Count: > 0 } warnings)
+                    {
+                        <div class="clp-warnings">
+                            @foreach (var w in warnings)
+                            {
+                                <div class="@($"clp-warning {(w.Blocking ? "clp-warning-block" : "")}")">
+                                    <MudIcon Icon="@(w.Blocking ? Icons.Material.Filled.Block : Icons.Material.Filled.WarningAmber)" Size="Size.Small" />
+                                    <span>@(IsPt ? w.Pt : w.En)</span>
+                                </div>
+                            }
+                        </div>
+                    }
 
                     <div class="clp-field">
                         <MudSelect T="string"
@@ -347,6 +362,7 @@
 
     protected override void OnInitialized()
     {
+        Catalog.EnsureFresh();
         Reload();
         ConfigService.ConfigChanged += OnExternalChange;
     }

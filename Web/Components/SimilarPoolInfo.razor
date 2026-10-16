@@ -35,7 +35,14 @@
         {
             <div class="clp-similar-row">
                 <span class="clp-similar-label">@T("Pontos de spawn", "Spawn spots")</span>
-                <span>@Pool.Spots.ToString("N0")</span>
+                @if (Pool.Spots == 0)
+                {
+                    <span class="clp-warn">@T("Nenhum ponto de loot solto com itens dessa categoria nos mapas escolhidos.", "No loose loot spots with items of this category on the selected maps.")</span>
+                }
+                else
+                {
+                    <span>@Pool.Spots.ToString("N0")</span>
+                }
             </div>
         }
         else

@@ -13,11 +13,15 @@ using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Models.Spt.Tables;
 using SPTarkov.Server.Core.Models.Utils;
+using SPTarkov.Server.Core.Services.Server;
+using SPTarkov.Server.Core.Services.Items;
 using SPTarkov.Server.Core.Utils.Cloners;
 
 namespace CustomLootPool.Services;
 
 public sealed record SimResult(string MapId, string MapName, int Raids, double StaticPerRaid, double LoosePerRaid, string? Error = null);
+
+public sealed record ItemWarning(string Pt, string En, bool Blocking);
 
 public sealed record MultiplierInfo(string MapId, string MapName, double Static, double Loose);
 
@@ -39,6 +43,8 @@ public class LootInjectionService(
     ItemCatalogService catalog,
     IServiceProvider services,
     LocationConfig locationConfig,
+    ItemFilterService itemFilterService,
+    SeasonalEventService seasonalEventService,
     ISptLogger<LootInjectionService> logger
 )
 {
@@ -64,11 +70,19 @@ public class LootInjectionService(
 
     public IReadOnlyDictionary<string, Location> Maps => _maps;
 
-    public void Register()
+    /// <summary>Called before Lots of Loot applies its preset (PostLoad + 99999), so these are the multipliers it replaces</summary>
+    public void SnapshotBaseMultipliers()
     {
-        // Runs before Lots of Loot applies its preset (PostLoad + 99999), so these are the multipliers it replaces
         _baseLoose = new Dictionary<string, double>(locationConfig.LooseLootMultiplier, StringComparer.OrdinalIgnoreCase);
         _baseStatic = new Dictionary<string, double>(locationConfig.StaticLootMultiplier, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Called after other mods, so items they add are known and our transformers run after theirs
+    /// (Lots of Loot rounds container weights in its own transformer)
+    /// </summary>
+    public void Register()
+    {
 
         foreach ((string key, Location location) in locationTable.GetDictionary())
         {
@@ -177,62 +191,89 @@ public class LootInjectionService(
 
     private (int, int, List<string>) ApplyStatic(string mapId, Dictionary<MongoId, StaticLootDetails> data)
     {
-        var entries = EntriesFor(mapId).Where(e => e.Static.Enabled && e.Static.ChancePercent > 0).ToList();
+        var entries = EntriesFor(mapId)
+            .Where(e => e.Static.Enabled && e.Static.ChancePercent > 0)
+            .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(e.Static.ChancePercent / (Compensate ? StaticRatio(mapId) : 1))))
+            .ToList();
         var summary = new List<string>();
         if (entries.Count == 0)
         {
             return (0, 0, summary);
         }
 
-        // Snapshot the original pools first so entries don't influence each other
-        var originals = data
-            .Where(kv => kv.Value?.ItemDistribution is not null)
-            .ToDictionary(kv => kv.Key, kv => kv.Value.ItemDistribution.ToList());
+        var addedPerEntry = new int[entries.Count];
 
-        int total = 0;
-        foreach (var entry in entries)
+        foreach ((MongoId containerId, StaticLootDetails details) in data)
         {
-            var item = catalog.Get(entry.Tpl)!;
-            var tpl = new MongoId(item.Id);
-            double chance = ClampChance(entry.Static.ChancePercent / (Compensate ? StaticRatio(mapId) : 1));
-            int added = 0;
-
-            foreach ((MongoId containerId, List<ItemDistribution> original) in originals)
+            var pool = details?.ItemDistribution?.ToList();
+            if (pool is null || pool.Count == 0)
             {
-                if (original.Count == 0 || !StaticMatches(entry.Static, containerId, original, item) || !Fits(containerId, item))
+                continue;
+            }
+
+            // Weights are computed against the untouched pool so entries don't influence each other
+            var additions = new Dictionary<MongoId, double>();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var (entry, item, chance) = entries[i];
+                var tpl = new MongoId(item.Id);
+                if (!StaticMatches(entry.Static, containerId, pool, item) || !Fits(containerId, item))
                 {
                     continue;
                 }
 
-                double others = original.Where(d => d.Tpl != tpl).Sum(d => (double)(d.RelativeProbability ?? 0));
+                double others = pool.Where(d => d.Tpl != tpl).Sum(d => (double)(d.RelativeProbability ?? 0));
                 if (others <= 0)
                 {
                     continue;
                 }
 
-                float weight = (float)Math.Max(1, Math.Round(others * chance / (100 - chance)));
-                var details = data[containerId];
-                var current = details.ItemDistribution as List<ItemDistribution> ?? details.ItemDistribution.ToList();
-                var existing = current.FirstOrDefault(d => d.Tpl == tpl);
+                additions[tpl] = Math.Max(additions.GetValueOrDefault(tpl), others * chance / (100 - chance));
+                addedPerEntry[i]++;
+            }
 
+            if (additions.Count == 0)
+            {
+                continue;
+            }
+
+            // Pools use whole-number weights and some mods round them again, so a small pool is scaled up
+            // as a whole instead of rounding a tiny weight to 0 or up to 1
+            double total = pool.Sum(d => (double)(d.RelativeProbability ?? 0));
+            double scale = Math.Ceiling(10 / additions.Values.Min());
+            scale = Math.Clamp(scale, 1, Math.Max(1, Math.Floor(1e7 / Math.Max(1, total + additions.Values.Sum()))));
+
+            if (scale > 1)
+            {
+                foreach (var dist in pool)
+                {
+                    dist.RelativeProbability = (float)Math.Round((dist.RelativeProbability ?? 0) * scale);
+                }
+            }
+
+            foreach ((MongoId tpl, double weight) in additions)
+            {
+                float scaled = (float)Math.Max(1, Math.Round(weight * scale));
+                var existing = pool.FirstOrDefault(d => d.Tpl == tpl);
                 if (existing is not null)
                 {
-                    existing.RelativeProbability = Math.Max(existing.RelativeProbability ?? 0, weight);
+                    existing.RelativeProbability = Math.Max(existing.RelativeProbability ?? 0, scaled);
                 }
                 else
                 {
-                    current.Add(new ItemDistribution { Tpl = tpl, RelativeProbability = weight });
+                    pool.Add(new ItemDistribution { Tpl = tpl, RelativeProbability = scaled, ExtensionData = [] });
                 }
-
-                details.ItemDistribution = current;
-                added++;
             }
 
-            total += added;
-            summary.Add($"{item.Name} → {added} " + configService.L("tipos de contêiner", "container types"));
+            details.ItemDistribution = pool;
         }
 
-        return (total, 0, summary);
+        for (int i = 0; i < entries.Count; i++)
+        {
+            summary.Add($"{entries[i].item.Name} → {addedPerEntry[i]} " + configService.L("tipos de contêiner", "container types"));
+        }
+
+        return (addedPerEntry.Sum(), 0, summary);
     }
 
     private bool StaticMatches(StaticLootSettings settings, MongoId containerId, List<ItemDistribution> pool, CatalogItem item)
@@ -587,6 +628,64 @@ public class LootInjectionService(
     }
 
     public bool MultipliersChanged() => GetMultipliers()?.Any(m => Math.Abs(m.Static - 1) > 0.01 || Math.Abs(m.Loose - 1) > 0.01) ?? false;
+
+    /// <summary>Things SPT itself does with the item that would surprise someone adding it to the loot</summary>
+    public List<ItemWarning> GetItemWarnings(string tplId)
+    {
+        var warnings = new List<ItemWarning>();
+        if (catalog.Get(tplId) is null)
+        {
+            return warnings;
+        }
+
+        var tpl = new MongoId(tplId);
+
+        if (itemFilterService.IsLootableItemBlacklisted(tpl))
+        {
+            warnings.Add(new(
+                "Bloqueado pela blacklist de loot do servidor (configs/item.json → lootableItemBlacklist): nunca vai spawnar.",
+                "Blocked by the server loot blacklist (configs/item.json → lootableItemBlacklist): it will never spawn.",
+                true));
+        }
+
+        if (!seasonalEventService.SeasonalEventEnabled() && seasonalEventService.GetInactiveSeasonalEventItems().Contains(tpl))
+        {
+            warnings.Add(new(
+                "Item de evento sazonal: o servidor só deixa spawnar enquanto o evento estiver ativo.",
+                "Seasonal event item: the server only lets it spawn while its event is active.",
+                true));
+        }
+
+        if (itemFilterService.IsItemBlacklisted(tpl))
+        {
+            warnings.Add(new(
+                "Está na blacklist geral de itens do servidor (itens sem uso ou quebrados). Pode não funcionar no jogo.",
+                "On the server's general item blacklist (unused or broken items). It may not work in game.",
+                false));
+        }
+
+        if (templateTable.Items.TryGetValue(tpl, out var template) && template.IsQuestItem())
+        {
+            warnings.Add(new(
+                "Item de quest: fora da quest dele pode se comportar de forma estranha.",
+                "Quest item: outside its quest it may behave oddly.",
+                false));
+        }
+
+        var limited = locationConfig.LootMaxSpawnLimits
+            .Where(kv => kv.Value is not null && kv.Value.TryGetValue(tpl, out _))
+            .Select(kv => $"{MapName(kv.Key)} ({kv.Value[tpl]})")
+            .ToList();
+        if (limited.Count > 0)
+        {
+            warnings.Add(new(
+                $"O servidor limita quantos spawnam por raid em: {string.Join(", ", limited)}.",
+                $"The server caps how many spawn per raid on: {string.Join(", ", limited)}.",
+                false));
+        }
+
+        return warnings;
+    }
 
     private sealed class PoolIndex
     {

@@ -544,3 +544,25 @@
     .clp-lol-head { grid-template-columns: auto minmax(0, 1fr); }
     .clp-lol-switch { grid-column: 1 / -1; }
 }
+
+.clp-warnings { display: grid; gap: 6px; }
+
+.clp-warning {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    border-radius: var(--spt-radius);
+    border: 1px solid rgba(250, 204, 21, 0.35);
+    background: var(--clp-yellow-soft);
+    color: var(--spt-accent);
+    font-size: 0.8rem;
+}
+
+.clp-warning-block {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(248, 113, 113, 0.1);
+    color: #fca5a5;
+}
+
+.clp-warning .mud-icon-root { flex: none; margin-top: 1px; }

@@ -5,7 +5,17 @@ using SPTarkov.Server.Core.DI;
 namespace CustomLootPool;
 
 [Injectable(TypePriority = OnLoadOrder.PostLoad + 1)]
-public class PostDbLoad(ConfigService configService, ItemCatalogService catalog, LootInjectionService injection) : IOnLoad
+public class EarlyLoad(LootInjectionService injection) : IOnLoad
+{
+    public Task OnLoadAsync(CancellationToken cancellationToken)
+    {
+        injection.SnapshotBaseMultipliers();
+        return Task.CompletedTask;
+    }
+}
+
+[Injectable(TypePriority = OnLoadOrder.PostLoad + 5000000)]
+public class LateLoad(ConfigService configService, ItemCatalogService catalog, LootInjectionService injection) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
