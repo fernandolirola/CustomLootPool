@@ -15,7 +15,7 @@ public class ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger
 {
     public const string LogPrefix = "[Custom Loot Pool]";
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
@@ -90,6 +90,22 @@ public class ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger
     }
 
     public LootPoolConfig CloneConfig() => CloneConfigOf(Config);
+
+    public static T Clone<T>(T source) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions)!;
+
+    public static string ExportEntries(IEnumerable<LootEntry> entries) => JsonSerializer.Serialize(new { Entries = entries }, JsonOptions);
+
+    /// <summary>Accepts a full config, an { "Entries": [...] } object or a bare array</summary>
+    public static List<LootEntry> ImportEntries(string json)
+    {
+        var trimmed = json.TrimStart();
+        if (trimmed.StartsWith('['))
+        {
+            return JsonSerializer.Deserialize<List<LootEntry>>(trimmed, JsonOptions) ?? [];
+        }
+
+        return JsonSerializer.Deserialize<LootPoolConfig>(trimmed, JsonOptions)?.Entries ?? [];
+    }
 
     public LootPoolConfig CloneConfigOf(LootPoolConfig source)
     {

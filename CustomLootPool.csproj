@@ -6,7 +6,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>CustomLootPool</AssemblyName>
     <RootNamespace>CustomLootPool</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
@@ -15,6 +15,7 @@
     <PackageReference Include="SPTarkov.Common" Version="4.1.2" ExcludeAssets="runtime" />
     <PackageReference Include="SPTarkov.DI" Version="4.1.2" ExcludeAssets="runtime" />
     <PackageReference Include="SPTarkov.Server.Core" Version="4.1.2" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.Reflection" Version="4.1.2" ExcludeAssets="runtime" />
     <PackageReference Include="SPTarkov.Server.Web" Version="4.1.2" ExcludeAssets="runtime" />
   </ItemGroup>
 

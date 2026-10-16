@@ -1,0 +1,133 @@
+@namespace CustomLootPool.Web.Components
+
+<div class="@($"clp-cats {(Disabled ? "clp-cats-off" : "")}")">
+    <div class="clp-cats-label">@Label</div>
+
+    @if (Value.Count == 0)
+    {
+        <div class="clp-cats-empty">@EmptyText</div>
+    }
+    else
+    {
+        <div class="clp-cats-chips">
+            @foreach (var id in Value)
+            {
+                var o = byId.GetValueOrDefault(id);
+                <span class="clp-cat-chip" title="@(o?.Sub ?? id)">
+                    <span class="clp-cat-chip-name">@(o?.Name ?? id)</span>
+                    @if (o?.Count is { } count)
+                    {
+                        <span class="clp-cat-chip-count">@count</span>
+                    }
+                    <button class="clp-cat-chip-x" disabled="@Disabled" aria-label="@T("Remover", "Remove")" @onclick="() => Remove(id)">
+                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                    </button>
+                </span>
+            }
+        </div>
+    }
+
+    @if (Suggestions?.Where(s => !Has(s.Id)).ToList() is { Count: > 0 } suggestions)
+    {
+        <div class="clp-cats-suggest">
+            <span>@T("Sugestões:", "Suggested:")</span>
+            @foreach (var o in suggestions)
+            {
+                <button class="clp-cat-suggest" disabled="@Disabled" @onclick="() => Add(o.Id)">+ @o.Name @if (o.Count is { } c) { <em>@c</em> }</button>
+            }
+        </div>
+    }
+
+    <MudAutocomplete T="PickOption" @key="@($"pick-{Pt}-{Label}")"
+                     Value="@null"
+                     ValueChanged="@(o => Add(o?.Id))"
+                     SearchFunc="@((text, _) => Task.FromResult(Search(text)))"
+                     ToStringFunc="@(o => o?.Name ?? string.Empty)"
+                     Placeholder="@Placeholder"
+                     Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                     AdornmentIcon="@Icons.Material.Filled.Search"
+                     MinCharacters="0" MaxItems="@((int?)null)" MaxHeight="380"
+                     ResetValueOnEmptyText="true" CoerceText="false"
+                     PopoverClass="clp-popover"
+                     Disabled="@Disabled" Class="clp-cats-search">
+        <ItemTemplate Context="o">
+            <div class="clp-cat-row">
+                <div class="clp-cat-row-copy">
+                    <span class="clp-cat-row-name">
+                        @if (Has(o.Id))
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Warning" />
+                        }
+                        @o.Name
+                    </span>
+                    @if (!string.IsNullOrEmpty(o.Sub))
+                    {
+                        <span class="clp-cat-row-path">@o.Sub</span>
+                    }
+                </div>
+                @if (o.Count is { } count)
+                {
+                    <span class="clp-cat-count">@count @CountLabel</span>
+                }
+            </div>
+        </ItemTemplate>
+        <NoItemsTemplate>
+            <span class="clp-cats-empty pa-3">@T("Nada encontrado.", "Nothing found.")</span>
+        </NoItemsTemplate>
+    </MudAutocomplete>
+
+    @if (!string.IsNullOrEmpty(Help))
+    {
+        <div class="clp-cats-help">@Help</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<PickOption> Options { get; set; } = [];
+    [Parameter] public List<PickOption>? Suggestions { get; set; }
+    [Parameter] public List<string> Value { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Placeholder { get; set; } = string.Empty;
+    [Parameter] public string EmptyText { get; set; } = string.Empty;
+    [Parameter] public string? Help { get; set; }
+    [Parameter] public string? CountLabel { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Pt { get; set; }
+
+    private Dictionary<string, PickOption> byId = [];
+
+    protected override void OnParametersSet()
+    {
+        byId = Options.GroupBy(o => o.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    private string T(string pt, string en) => Pt ? pt : en;
+
+    private bool Has(string id) => Value.Contains(id, StringComparer.OrdinalIgnoreCase);
+
+    private IEnumerable<PickOption> Search(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return Options;
+        }
+
+        var q = text.Trim();
+        return Options
+            .Where(o => o.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || (o.Sub?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) || o.Id.Equals(q, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(o => o.Name.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 0 : o.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ? 1 : 2);
+    }
+
+    private Task Add(string? id)
+    {
+        if (string.IsNullOrEmpty(id) || Has(id))
+        {
+            return Task.CompletedTask;
+        }
+
+        return ValueChanged.InvokeAsync([.. Value, id]);
+    }
+
+    private Task Remove(string id) => ValueChanged.InvokeAsync(Value.Where(v => !v.Equals(id, StringComparison.OrdinalIgnoreCase)).ToList());
+}

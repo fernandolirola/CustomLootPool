@@ -15,7 +15,7 @@ public class EarlyLoad(LootInjectionService injection) : IOnLoad
 }
 
 [Injectable(TypePriority = OnLoadOrder.PostLoad + 5000000)]
-public class LateLoad(ConfigService configService, ItemCatalogService catalog, LootInjectionService injection) : IOnLoad
+public class LateLoad(ConfigService configService, ItemCatalogService catalog, LootInjectionService injection, ExtraLootService extra) : IOnLoad
 {
     public Task OnLoadAsync(CancellationToken cancellationToken)
     {
@@ -23,8 +23,7 @@ public class LateLoad(ConfigService configService, ItemCatalogService catalog, L
         catalog.Build();
         injection.Register();
         configService.ConfigChanged += injection.InvalidateCaches;
-
-        // Reading every map's loot makes other loot mods log each read, so do it once while the server boots
+        extra.EnablePatches();
         _ = injection.EnsurePoolIndex();
         return Task.CompletedTask;
     }

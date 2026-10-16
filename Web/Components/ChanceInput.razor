@@ -1,16 +1,65 @@
 @namespace CustomLootPool.Web.Components
 
-<div class="clp-chance @(Disabled ? "clp-chance-off" : "")">
+<div class="@($"clp-chance {(Disabled ? "clp-chance-off" : "")}")">
+    @if (Rarities is { Count: > 0 })
+    {
+        <div class="clp-rarity" role="group">
+            @foreach (var r in Rarities)
+            {
+                var on = Math.Abs(r.Value - Value) < 0.0005;
+                <button type="button" class="@($"clp-rarity-btn clp-rarity-{r.Key} {(on ? "clp-rarity-on" : "")}")" disabled="@Disabled"
+                        title="@r.Hint" @onclick="() => Set(r.Value)">
+                    <span>@r.Label</span>
+                    <em>@Fmt(r.Value)</em>
+                </button>
+            }
+        </div>
+    }
     <div class="clp-chance-row">
         <MudSlider T="double" Value="@SliderValue" ValueChanged="@OnSlider" Min="0" Max="100" Step="1" Color="Color.Warning" Disabled="@Disabled" Class="clp-slider" />
-        <MudNumericField T="double" Value="@Value" ValueChanged="@Set" Min="0" Max="90" Step="0.1" Format="0.###"
+        <MudNumericField T="double" Value="@Value" ValueChanged="@Set" Min="0" Max="@Max" Step="0.1" Format="0.###"
                          Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentText="%"
                          Disabled="@Disabled" Class="clp-chance-num" HideSpinButtons="true" />
     </div>
-    <span class="clp-help">@Help</span>
+    @if (!string.IsNullOrEmpty(Help))
+    {
+        <span class="clp-help">@Help</span>
+    }
     @if (!string.IsNullOrEmpty(Note))
     {
         <span class="clp-note">@Note</span>
+    }
+
+    @if (MapChances is not null && Maps is not null)
+    {
+        var custom = MapChances.Count(kv => Maps.Contains(kv.Key, StringComparer.OrdinalIgnoreCase));
+        <button type="button" class="clp-link" disabled="@Disabled" @onclick="() => showMaps = !showMaps">
+            <MudIcon Icon="@(showMaps ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+            @T("% diferente por mapa", "Different % per map")
+            @if (custom > 0)
+            {
+                <span class="clp-count-pill">@custom</span>
+            }
+        </button>
+        @if (showMaps)
+        {
+            <div class="clp-mapchances">
+                @foreach (var map in Maps)
+                {
+                    var has = MapChances.TryGetValue(map, out var v);
+                    <label class="@($"clp-mapchance {(has ? "clp-mapchance-on" : "")}")">
+                        <span>@ItemCatalogService.MapName(map, Pt)</span>
+                        <span class="clp-mapchance-field">
+                            <input type="number" min="0" max="@Max" step="0.01" placeholder="@Fmt(Value).TrimEnd('%')" disabled="@Disabled"
+                                   value="@(has ? v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "")"
+                                   @onchange="e => SetMap(map, e.Value?.ToString())" />
+                            <em>%</em>
+                        </span>
+                    </label>
+                }
+                <span class="clp-help">@T("Vazio = usa a % geral. 0 = não aparece nesse mapa.", "Empty = uses the main %. 0 = never on that map.")</span>
+            </div>
+        }
     }
 </div>
 
@@ -20,20 +69,35 @@
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public string? Help { get; set; }
     [Parameter] public string? Note { get; set; }
+    [Parameter] public double Max { get; set; } = 90;
+    [Parameter] public List<RarityOption>? Rarities { get; set; }
+    [Parameter] public IEnumerable<string>? Maps { get; set; }
+    [Parameter] public Dictionary<string, double>? MapChances { get; set; }
+    [Parameter] public EventCallback MapChancesChanged { get; set; }
+    [Parameter] public bool Pt { get; set; }
+
+    private bool showMaps;
 
     // Logarithmic-ish slider: most useful chances are small, so the first half covers 0-5%
-    private static readonly double[] Stops = [0, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 35, 50, 90];
+    private static readonly double[] Stops = [0, 0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 20, 35, 50, 90, 100];
+
+    private string T(string pt, string en) => Pt ? pt : en;
+
+    private static string Fmt(double v) => (v < 1 ? v.ToString("0.###") : v.ToString("0.#")) + "%";
+
+    private double[] ActiveStops => Stops.Where(s => s <= Max).ToArray();
 
     private double SliderValue
     {
         get
         {
-            for (int i = 0; i < Stops.Length - 1; i++)
+            var stops = ActiveStops;
+            for (int i = 0; i < stops.Length - 1; i++)
             {
-                if (Value <= Stops[i + 1])
+                if (Value <= stops[i + 1])
                 {
-                    double t = (Value - Stops[i]) / (Stops[i + 1] - Stops[i]);
-                    return (i + t) * 100.0 / (Stops.Length - 1);
+                    double t = (Value - stops[i]) / (stops[i + 1] - stops[i]);
+                    return (i + t) * 100.0 / (stops.Length - 1);
                 }
             }
             return 100;
@@ -42,12 +106,32 @@
 
     private Task OnSlider(double pos)
     {
-        double scaled = pos * (Stops.Length - 1) / 100.0;
-        int i = Math.Min((int)scaled, Stops.Length - 2);
-        double v = Stops[i] + (scaled - i) * (Stops[i + 1] - Stops[i]);
+        var stops = ActiveStops;
+        double scaled = pos * (stops.Length - 1) / 100.0;
+        int i = Math.Min((int)scaled, stops.Length - 2);
+        double v = stops[i] + (scaled - i) * (stops[i + 1] - stops[i]);
         v = v < 1 ? Math.Round(v, 2) : v < 10 ? Math.Round(v, 1) : Math.Round(v);
         return Set(v);
     }
 
-    private Task Set(double v) => ValueChanged.InvokeAsync(Math.Clamp(v, 0, 90));
+    private Task Set(double v) => ValueChanged.InvokeAsync(Math.Clamp(v, 0, Max));
+
+    private Task SetMap(string map, string? raw)
+    {
+        if (MapChances is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (double.TryParse(raw?.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v))
+        {
+            MapChances[map] = Math.Clamp(v, 0, Max);
+        }
+        else
+        {
+            MapChances.Remove(map);
+        }
+
+        return MapChancesChanged.InvokeAsync();
+    }
 }

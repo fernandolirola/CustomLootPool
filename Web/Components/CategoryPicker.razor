@@ -8,82 +8,18 @@
 }
 else
 {
-    var byId = categories.ToDictionary(c => c.Id, StringComparer.OrdinalIgnoreCase);
-    var suggestions = Suggestions(byId);
+    var options = categories
+        .Where(c => !GenericNodes.Contains(c.Name))
+        .OrderByDescending(c => c.ItemCount)
+        .Select(c => new PickOption(c.Id, c.Name, ParentPath(c), c.ItemCount))
+        .ToList();
 
-    <div class="@($"clp-cats {(Disabled ? "clp-cats-off" : "")}")">
-        <div class="clp-cats-label">@T("Lootpools escolhidos", "Chosen loot pools")</div>
-
-        @if (Value.Count == 0)
-        {
-            <div class="clp-cats-empty">@T("Nenhum ainda. Busque abaixo ou use uma sugestão.", "None yet. Search below or use a suggestion.")</div>
-        }
-        else
-        {
-            <div class="clp-cats-chips">
-                @foreach (var id in Value)
-                {
-                    var c = byId.GetValueOrDefault(id);
-                    <span class="clp-cat-chip" title="@(c?.Path ?? id)">
-                        <span class="clp-cat-chip-name">@(c?.Name ?? id)</span>
-                        @if (c is not null)
-                        {
-                            <span class="clp-cat-chip-count">@c.ItemCount</span>
-                        }
-                        <button class="clp-cat-chip-x" disabled="@Disabled" aria-label="@T("Remover", "Remove")" @onclick="() => Remove(id)">
-                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
-                        </button>
-                    </span>
-                }
-            </div>
-        }
-
-        @if (suggestions.Count > 0)
-        {
-            <div class="clp-cats-suggest">
-                <span>@T("Sugestões para este item:", "Suggested for this item:")</span>
-                @foreach (var c in suggestions)
-                {
-                    <button class="clp-cat-suggest" disabled="@Disabled" @onclick="() => Add(c.Id)">+ @c.Name <em>@c.ItemCount</em></button>
-                }
-            </div>
-        }
-
-        <MudAutocomplete T="PoolCategory" @key="@($"cats-{Pt}")"
-                         Value="@null"
-                         ValueChanged="@(c => Add(c?.Id))"
-                         SearchFunc="@((text, _) => Task.FromResult(Search(categories, text)))"
-                         ToStringFunc="@(c => c?.Name ?? string.Empty)"
-                         Placeholder="@T("Buscar lootpool...", "Search loot pools...")"
-                         Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         MinCharacters="0" MaxItems="@((int?)null)" MaxHeight="380"
-                         ResetValueOnEmptyText="true" CoerceText="false" Clearable="false"
-                         Disabled="@Disabled" Class="clp-cats-search">
-            <ItemTemplate Context="c">
-                <div class="clp-cat-row">
-                    <div class="clp-cat-row-copy">
-                        <span class="clp-cat-row-name">
-                            @if (Value.Contains(c.Id, StringComparer.OrdinalIgnoreCase))
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Warning" />
-                            }
-                            @c.Name
-                        </span>
-                        @if (ParentPath(c) is { Length: > 0 } parent)
-                        {
-                            <span class="clp-cat-row-path">@parent</span>
-                        }
-                    </div>
-                    <span class="clp-cat-count">@c.ItemCount @T("itens", "items")</span>
-                </div>
-            </ItemTemplate>
-            <NoItemsTemplate>
-                <span class="clp-cats-empty pa-3">@T("Nenhum lootpool encontrado.", "No loot pool found.")</span>
-            </NoItemsTemplate>
-        </MudAutocomplete>
-        <div class="clp-cats-help">@T("O item entra onde já spawnam itens desses lootpools.", "The item goes where items from these loot pools already spawn.")</div>
-    </div>
+    <ChipPicker Options="@options" Suggestions="@Suggestions(options)" Value="@Value" ValueChanged="@ValueChanged" Disabled="@Disabled" Pt="@Pt"
+                Label="@T("Lootpools escolhidos", "Chosen loot pools")"
+                Placeholder="@T("Buscar lootpool...", "Search loot pools...")"
+                EmptyText="@T("Nenhum ainda. Busque abaixo ou use uma sugestão.", "None yet. Search below or use a suggestion.")"
+                CountLabel="@T("itens", "items")"
+                Help="@T("O item entra onde já spawnam itens desses lootpools.", "The item goes where items from these loot pools already spawn.")" />
 }
 
 @code {
@@ -103,46 +39,14 @@ else
         return string.Join(" › ", parts.Take(parts.Length - 1).Where(p => !GenericNodes.Contains(p)));
     }
 
-    private static IEnumerable<PoolCategory> Search(List<PoolCategory> categories, string? text)
-    {
-        var useful = categories.Where(c => !GenericNodes.Contains(c.Name));
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return useful.OrderByDescending(c => c.ItemCount);
-        }
-
-        var q = text.Trim();
-        return useful
-            .Where(c => c.Path.Contains(q, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(c => c.Name.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 0 : c.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ? 1 : 2)
-            .ThenByDescending(c => c.ItemCount);
-    }
-
-    private List<PoolCategory> Suggestions(Dictionary<string, PoolCategory> byId)
+    private List<PickOption> Suggestions(List<PickOption> options)
     {
         if (string.IsNullOrEmpty(ItemTpl))
         {
             return [];
         }
 
-        return Injection.AncestorsOf(new MongoId(ItemTpl))
-            .Where(id => byId.ContainsKey(id) && !Value.Contains(id, StringComparer.OrdinalIgnoreCase))
-            .Select(id => byId[id])
-            .Where(c => !GenericNodes.Contains(c.Name))
-            .OrderBy(c => c.ItemCount)
-            .Take(4)
-            .ToList();
+        var ancestors = Injection.AncestorsOf(new MongoId(ItemTpl));
+        return options.Where(o => ancestors.Contains(o.Id)).OrderBy(o => o.Count).Take(4).ToList();
     }
-
-    private Task Add(string? id)
-    {
-        if (string.IsNullOrEmpty(id) || Value.Contains(id, StringComparer.OrdinalIgnoreCase))
-        {
-            return Task.CompletedTask;
-        }
-
-        return ValueChanged.InvokeAsync([.. Value, id]);
-    }
-
-    private Task Remove(string id) => ValueChanged.InvokeAsync(Value.Where(v => !v.Equals(id, StringComparison.OrdinalIgnoreCase)).ToList());
 }

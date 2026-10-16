@@ -1,0 +1,24 @@
+@namespace CustomLootPool.Web.Components
+@typeparam TValue
+
+<div class="@($"clp-seg {(Disabled ? "clp-seg-off" : "")} {Class}")" role="radiogroup">
+    @foreach (var o in Options)
+    {
+        var on = EqualityComparer<TValue>.Default.Equals(o.Value, Value);
+        <button type="button" role="radio" aria-checked="@on" class="@(on ? "clp-seg-on" : "")" disabled="@Disabled" @onclick="() => ValueChanged.InvokeAsync(o.Value)">
+            @if (o.Icon is not null)
+            {
+                <MudIcon Icon="@o.Icon" Size="Size.Small" />
+            }
+            <span>@o.Label</span>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<SegmentOption<TValue>> Options { get; set; } = [];
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+}

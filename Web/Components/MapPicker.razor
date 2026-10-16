@@ -1,0 +1,36 @@
+@namespace CustomLootPool.Web.Components
+
+<div class="clp-maps" role="group">
+    <button type="button" class="@($"clp-map {(Value.Count == 0 ? "clp-map-on" : "")}")" @onclick="() => ValueChanged.InvokeAsync([])">
+        @T("Todos os mapas", "All maps")
+    </button>
+    @foreach (var map in Maps)
+    {
+        var on = Value.Contains(map, StringComparer.OrdinalIgnoreCase);
+        <button type="button" class="@($"clp-map {(on ? "clp-map-on" : "")}")" aria-pressed="@on" @onclick="() => Toggle(map)">
+            @if (on)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+            }
+            @ItemCatalogService.MapName(map, Pt)
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<string> Maps { get; set; } = [];
+    [Parameter] public List<string> Value { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
+    [Parameter] public bool Pt { get; set; }
+
+    private string T(string pt, string en) => Pt ? pt : en;
+
+    private Task Toggle(string map)
+    {
+        var next = Value.Contains(map, StringComparer.OrdinalIgnoreCase)
+            ? Value.Where(m => !m.Equals(map, StringComparison.OrdinalIgnoreCase)).ToList()
+            : [.. Value, map];
+        // Picking every map is the same as "all maps"
+        return ValueChanged.InvokeAsync(next.Count >= Maps.Count() ? [] : next);
+    }
+}

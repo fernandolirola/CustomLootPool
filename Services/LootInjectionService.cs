@@ -186,8 +186,54 @@ public class LootInjectionService(
         return cfg.Entries.Where(e =>
             e.Enabled
             && catalog.Exists(e.Tpl)
-            && (e.Maps.Count == 0 || e.Maps.Any(m => m.Equals(mapId, StringComparison.OrdinalIgnoreCase)))
+            && OnMap(e, mapId)
+            && IsActiveNow(e.Schedule)
         );
+    }
+
+    private static bool OnMap(LootEntry entry, string? mapId)
+    {
+        return entry.Maps.Count == 0 || mapId is null || entry.Maps.Any(m => m.Equals(mapId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static bool IsActiveNow(ScheduleSettings schedule) => IsActiveOn(schedule, DateTime.Now);
+
+    public static bool IsActiveOn(ScheduleSettings schedule, DateTime date)
+    {
+        switch (schedule.Mode)
+        {
+            case ScheduleMode.Weekends:
+                return date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+            case ScheduleMode.Dates:
+                if (!TryParseDay(schedule.From, out int from) || !TryParseDay(schedule.To, out int to))
+                {
+                    return true;
+                }
+
+                int today = date.Month * 100 + date.Day;
+                return from <= to ? today >= from && today <= to : today >= from || today <= to;
+            default:
+                return true;
+        }
+    }
+
+    private static bool TryParseDay(string? value, out int day)
+    {
+        day = 0;
+        var parts = value?.Split('-', '/');
+        if (parts is not { Length: 2 } || !int.TryParse(parts[0], out int month) || !int.TryParse(parts[1], out int dom)
+            || month is < 1 or > 12 || dom is < 1 or > 31)
+        {
+            return false;
+        }
+
+        day = month * 100 + dom;
+        return true;
+    }
+
+    public static double ChanceFor(double fallback, Dictionary<string, double>? perMap, string mapId)
+    {
+        return perMap is not null && perMap.TryGetValue(mapId, out double chance) ? chance : fallback;
     }
 
     private static double ClampChance(double chance) => Math.Clamp(chance, 0.001, MaxChance);
@@ -195,8 +241,8 @@ public class LootInjectionService(
     private (int, int, List<string>) ApplyStatic(string mapId, Dictionary<MongoId, StaticLootDetails> data)
     {
         var entries = EntriesFor(mapId)
-            .Where(e => e.Static.Enabled && e.Static.ChancePercent > 0)
-            .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(e.Static.ChancePercent / (Compensate ? StaticRatio(mapId) : 1))))
+            .Where(e => e.Static.Enabled && ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) > 0)
+            .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) / (Compensate ? StaticRatio(mapId) : 1))))
             .ToList();
         var summary = new List<string>();
         if (entries.Count == 0)
@@ -321,7 +367,7 @@ public class LootInjectionService(
 
     private (int, int, List<string>) ApplyLoose(string mapId, LooseLoot data)
     {
-        var entries = EntriesFor(mapId).Where(e => e.Loose.Enabled && e.Loose.ChancePercent > 0).ToList();
+        var entries = EntriesFor(mapId).Where(e => (e.Loose.Enabled && ChanceFor(e.Loose.ChancePercent, e.Loose.MapChances, mapId) > 0) || e.Guaranteed).ToList();
         var summary = new List<string>();
         if (entries.Count == 0 || data.Spawnpoints is null)
         {
@@ -343,25 +389,36 @@ public class LootInjectionService(
             .ToList();
 
         int total = 0;
+        var forced = new List<Spawnpoint>();
         foreach (var entry in entries)
         {
             var item = catalog.Get(entry.Tpl)!;
-            double chance = ClampChance(entry.Loose.ChancePercent / (Compensate ? looseRatio : 1));
             string composedKey = $"customlootpool_{item.Id}";
-            var targets = TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item);
+            // Without loose loot on, the guaranteed copy goes to spots that already hold similar items
+            var mode = entry.Loose.Enabled ? entry.Loose.Mode : TargetMode.Similar;
+            var targets = TargetCategories(mode, entry.Loose.Categories, item);
+            var matching = originals
+                .Where(o => o.weight > 0 && !o.tpls.Contains(item.Id) && (mode == TargetMode.All || o.parents.Overlaps(targets)))
+                .ToList();
+
+            if (entry.Guaranteed)
+            {
+                var spots = matching.Count > 0 ? matching : originals.Where(o => o.weight > 0).ToList();
+                forced.AddRange(spots.Select((o, i) => BuildForcedSpawnpoint(o.sp, item, i)));
+                summary.Add($"{item.Name} → " + configService.L($"1 garantido entre {spots.Count} pontos", $"1 guaranteed among {spots.Count} spots"));
+            }
+
+            double mapChance = ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId);
+            if (!entry.Loose.Enabled || mapChance <= 0)
+            {
+                continue;
+            }
+
+            double chance = ClampChance(mapChance / (Compensate ? looseRatio : 1));
             int added = 0;
 
-            foreach (var (sp, parents, tpls, weight) in originals)
+            foreach (var (sp, _, _, weight) in matching)
             {
-                if (weight <= 0 || tpls.Contains(item.Id))
-                {
-                    continue;
-                }
-
-                if (entry.Loose.Mode != TargetMode.All && !parents.Overlaps(targets))
-                {
-                    continue;
-                }
 
                 var newItems = BuildLooseItems(item, composedKey);
                 sp.Template!.Items = sp.Template.Items!.Concat(newItems).ToList();
@@ -379,7 +436,39 @@ public class LootInjectionService(
             summary.Add($"{item.Name} → {added} " + configService.L("pontos de spawn", "spawn points"));
         }
 
+        if (forced.Count > 0)
+        {
+            data.SpawnpointsForced = (data.SpawnpointsForced ?? []).Concat(forced).ToList();
+        }
+
         return (0, total, summary);
+    }
+
+    /// <summary>
+    /// SPT spawns one forced spawnpoint per template id, drawn among entries sharing that id,
+    /// so every candidate spot gets the same id and the item lands on one of them each raid
+    /// </summary>
+    private Spawnpoint BuildForcedSpawnpoint(Spawnpoint source, CatalogItem item, int index)
+    {
+        string id = $"customlootpool_guaranteed_{item.Id}";
+        var template = cloner.Clone(source.Template)!;
+        var items = BuildLooseItems(item, id);
+        var root = items.First(i => i.ComposedKey == id);
+        items.Remove(root);
+        items.Insert(0, root);
+
+        template.Id = id;
+        template.IsAlwaysSpawn = true;
+        template.Root = root.Id.ToString();
+        template.Items = items;
+
+        return new Spawnpoint
+        {
+            LocationId = $"{source.LocationId}_clp{index}",
+            Probability = 1,
+            Template = template,
+            ItemDistribution = [],
+        };
     }
 
     private List<SptLootItem> BuildLooseItems(CatalogItem item, string composedKey)
@@ -454,7 +543,7 @@ public class LootInjectionService(
                                     .Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0);
                             }
 
-                            if (sim.Loose.Enabled && location.LooseLoot?.Value is { } loose)
+                            if ((sim.Loose.Enabled || sim.Guaranteed) && location.LooseLoot?.Value is { } loose)
                             {
                                 looseCount += generator.GenerateDynamicLoot(loose, ammo, mapId)
                                     .Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0);
