@@ -38,10 +38,24 @@
                         <span class="clp-dirty"><MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" /> @T("Alterações não salvas", "Unsaved changes")</span>
                         <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">@T("Descartar", "Discard")</MudButton>
                     }
-                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(!IsDirty)" StartIcon="@Icons.Material.Filled.Save" OnClick="Save">@T("Salvar", "Save")</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(!IsDirty || externalChange)" StartIcon="@Icons.Material.Filled.Save" OnClick="Save">@T("Salvar", "Save")</MudButton>
                 </div>
             </div>
         </MudPaper>
+
+        @if (externalChange)
+        {
+            <MudAlert Severity="Severity.Warning">@T("Outra aba salvou alterações. Recarregue a configuração antes de salvar; suas alterações locais ainda não foram gravadas.", "Another editor saved changes. Reload the configuration before saving; your local edits have not been written.")
+                <MudButton OnClick="Discard">@T("Recarregar configuração", "Reload configuration")</MudButton>
+            </MudAlert>
+        }
+        @if (indexError is not null)
+        {
+            <MudAlert Severity="Severity.Warning">@T("Não foi possível carregar a prévia dos pools: ", "Could not load the pool preview: ") @indexError
+                <MudButton OnClick="LoadPoolIndex">@T("Tentar novamente", "Retry")</MudButton>
+            </MudAlert>
+        }
+        <p class="clp-help">@T("As chances são calculadas juntas em cada pool. Se a soma chegar a 100%, os itens configurados dividem todo o pool proporcionalmente. Entradas duplicadas usam a maior chance aplicável.", "Chances are calculated together in each pool. At a total of 100% or more, configured items share the entire pool proportionally. Duplicate entries use the highest applicable chance.")</p>
 
         @if (Injection.MultipliersChanged() && Injection.GetMultipliers() is { } multipliers)
         {
@@ -513,6 +527,9 @@
                                            Disabled="@(item is null || busy.ContainsKey(e) || (!e.Static.Enabled && !e.Loose.Enabled && !e.Guaranteed))" OnClick="() => RunSimulation(e)">
                                     @T("Simular raids", "Simulate raids")
                                 </MudButton>
+                                <label>@T("Amostra", "Sample")
+                                    <select value="@simulationRaids" @onchange="ChangeSample"><option value="4">4 raids</option><option value="25">25 raids</option><option value="100">100 raids</option></select>
+                                </label>
                                 @if (busy.TryGetValue(e, out var status))
                                 {
                                     <span class="clp-busy"><MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Warning" /> @status</span>
@@ -534,8 +551,8 @@
                                             <div class="clp-sim-row clp-sim-error">
                                                 <span class="clp-sim-map">@r.MapName</span>
                                                 <span class="clp-sim-errtext" title="@r.Error">
-                                                    @T("Não deu para simular este mapa (outro mod de loot falhou nele). O item continua sendo adicionado normalmente.",
-                                                       "Could not simulate this map (another loot mod failed on it). The item is still added normally.")
+                                                    @T("Não foi possível simular este mapa. Consulte o erro para identificar a causa; a simulação não altera sua configuração salva.",
+                                                       "Could not simulate this map. Check the error for its cause; simulation does not change your saved configuration.")
                                                 </span>
                                             </div>
                                         }
@@ -551,7 +568,7 @@
                                         }
                                     </div>
                                     <span class="clp-help">
-                                        @T($"Média geral: {totalAvg:0.0#} por raid. É aleatório: cada raid pode variar bastante.", $"Overall average: {totalAvg:0.0#} per raid. It is random: individual raids can vary a lot.")
+                                        @T($"Média geral: {totalAvg:0.0#} por raid. Amostra aleatória: zero ocorrências não significa que o item não possa aparecer.", $"Overall average: {totalAvg:0.0#} per raid. Random sample: zero occurrences do not mean the item cannot spawn.")
                                         @if (e.Bots.Enabled || e.Airdrops.Enabled)
                                         {
                                             @T(" Bots e airdrops não entram na simulação.", " Bots and airdrops are not part of the simulation.")
@@ -618,7 +635,11 @@
     private readonly Dictionary<LootEntry, List<SimResult>> sims = [];
     private readonly Dictionary<LootEntry, string> tabs = [];
     private readonly HashSet<LootEntry> collapsed = [];
-    private const int SimRaids = 4;
+    private int simulationRaids = 4;
+    private int savedRevision;
+    private bool externalChange;
+    private string? indexError;
+    private readonly CancellationTokenSource lifetime = new();
     private List<PickOption> ContainerOptions = [];
     private string filter = string.Empty;
     private string? shareMode;
@@ -648,23 +669,47 @@
         if (firstRender)
         {
             await RestoreCollapsed();
-            ContainerOptions = (await Injection.AllContainers()).Select(c => new PickOption(c.Id, c.Name)).ToList();
-            StateHasChanged();
-            if (!Injection.PoolIndexReady)
-            {
-                await Injection.EnsurePoolIndex();
-                StateHasChanged();
-            }
+            await LoadPoolIndex();
         }
     }
 
-    public void Dispose() => ConfigService.ConfigChanged -= OnExternalChange;
+    public void Dispose()
+    {
+        ConfigService.ConfigChanged -= OnExternalChange;
+        lifetime.Cancel();
+        lifetime.Dispose();
+    }
 
-    private void OnExternalChange() => InvokeAsync(StateHasChanged);
+    private void OnExternalChange() => InvokeAsync(() =>
+    {
+        if (!IsDirty) Reload();
+        else externalChange = ConfigService.Revision != savedRevision;
+        StateHasChanged();
+    });
+
+    private async Task LoadPoolIndex()
+    {
+        try
+        {
+            ContainerOptions = (await Injection.AllContainers()).Select(c => new PickOption(c.Id, c.Name)).ToList();
+            indexError = null;
+        }
+        catch (Exception ex) { indexError = ex.Message; }
+        StateHasChanged();
+    }
+
+    private void ChangeSample(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out int count) && count is 4 or 25 or 100) simulationRaids = count;
+        sims.Clear();
+    }
 
     private void Reload()
     {
-        working = ConfigService.CloneConfig();
+        var snapshot = ConfigService.GetSnapshot();
+        working = snapshot.Config;
+        savedRevision = snapshot.Revision;
+        externalChange = false;
         savedJson = Serialize(working);
         previews.Clear();
         sims.Clear();
@@ -1115,9 +1160,15 @@
                 entry.Airdrops.ChancePercent = Math.Clamp(entry.Airdrops.ChancePercent, 0, 100);
             }
 
-            ConfigService.Save(ConfigService.CloneConfigOf(working));
+            savedRevision = ConfigService.Save(working, savedRevision);
+            externalChange = false;
             savedJson = Serialize(working);
             Snackbar.Add(T("Salvo! Vale a partir do próximo raid.", "Saved! Applies from the next raid."), Severity.Success);
+        }
+        catch (ConfigConflictException ex)
+        {
+            externalChange = true;
+            Snackbar.Add(ex.Message, Severity.Warning);
         }
         catch (Exception ex)
         {
@@ -1149,12 +1200,13 @@
         StateHasChanged();
         try
         {
-            sims[entry] = await Injection.Simulate(entry, SimRaids, working.CompensateLootMultipliers, map =>
+            sims[entry] = await Injection.Simulate(entry, simulationRaids, working.CompensateLootMultipliers, map =>
             {
                 busy[entry] = T($"Simulando {map}...", $"Simulating {map}...");
                 InvokeAsync(StateHasChanged);
-            });
+            }, ct: lifetime.Token, context: working);
         }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception ex)
         {
             Snackbar.Add(T("Erro na simulação: ", "Simulation failed: ") + ex.Message, Severity.Error);

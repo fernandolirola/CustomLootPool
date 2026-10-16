@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
+using SPTarkov.Server.Core.Helpers.InRaid;
 using CustomLootPool.Models;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Extensions;
@@ -62,6 +64,9 @@ public class LootInjectionService(
     /// <summary>Lets the simulation inject an unsaved entry without touching the live config</summary>
     [ThreadStatic]
     private static LootEntry? _simEntry;
+
+    [ThreadStatic]
+    private static List<LootEntry>? _simEntries;
 
     [ThreadStatic]
     private static bool? _simCompensate;
@@ -170,11 +175,10 @@ public class LootInjectionService(
 
     private IEnumerable<LootEntry> EntriesFor(string mapId)
     {
-        if (_simEntry is { } sim)
+        if (_simEntries is { } simulated)
         {
-            return catalog.Exists(sim.Tpl) && (sim.Maps.Count == 0 || sim.Maps.Contains(mapId, StringComparer.OrdinalIgnoreCase))
-                ? [sim]
-                : [];
+            return simulated.Where(entry => catalog.Exists(entry.Tpl) && OnMap(entry, mapId)
+                && (ReferenceEquals(entry, _simEntry) || (entry.Enabled && IsActiveNow(entry.Schedule))));
         }
 
         var cfg = configService.Config;
@@ -244,87 +248,33 @@ public class LootInjectionService(
             .Where(e => e.Static.Enabled && ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) > 0)
             .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) / (Compensate ? StaticRatio(mapId) : 1))))
             .ToList();
-        var summary = new List<string>();
-        if (entries.Count == 0)
+        var counts = new int[entries.Count];
+        foreach (var (containerId, details) in data)
         {
-            return (0, 0, summary);
-        }
-
-        var addedPerEntry = new int[entries.Count];
-
-        foreach ((MongoId containerId, StaticLootDetails details) in data)
-        {
-            var pool = details?.ItemDistribution?.ToList();
-            if (pool is null || pool.Count == 0)
-            {
-                continue;
-            }
-
-            // Weights are computed against the untouched pool so entries don't influence each other
-            var additions = new Dictionary<MongoId, double>();
+            if (details?.ItemDistribution is null) continue;
+            var pool = details.ItemDistribution.ToList();
+            if (pool.Count == 0) continue;
+            var requested = new List<KeyValuePair<MongoId, double>>();
             for (int i = 0; i < entries.Count; i++)
             {
                 var (entry, item, chance) = entries[i];
-                var tpl = new MongoId(item.Id);
-                if (!StaticMatches(entry.Static, containerId, pool, item) || !Fits(containerId, item))
-                {
-                    continue;
-                }
-
-                double others = pool.Where(d => d.Tpl != tpl).Sum(d => (double)(d.RelativeProbability ?? 0));
-                if (others <= 0)
-                {
-                    continue;
-                }
-
-                additions[tpl] = Math.Max(additions.GetValueOrDefault(tpl), others * chance / (100 - chance));
-                addedPerEntry[i]++;
+                if (!StaticMatches(entry.Static, containerId, pool, item) || !Fits(containerId, item)) continue;
+                requested.Add(new(new MongoId(item.Id), chance));
+                counts[i]++;
             }
-
-            if (additions.Count == 0)
+            if (requested.Count == 0) continue;
+            var original = pool.GroupBy(item => item.Tpl).ToDictionary(group => group.Key, group => group.Sum(item => (double)(item.RelativeProbability ?? 0)));
+            var weights = PoolWeights.Calculate(original, requested);
+            details.ItemDistribution = weights.Where(pair => pair.Value > 0).Select(pair =>
             {
-                continue;
-            }
-
-            // Pools use whole-number weights and some mods round them again, so a small pool is scaled up
-            // as a whole instead of rounding a tiny weight to 0 or up to 1
-            double total = pool.Sum(d => (double)(d.RelativeProbability ?? 0));
-            double scale = Math.Ceiling(10 / additions.Values.Min());
-            scale = Math.Clamp(scale, 1, Math.Max(1, Math.Floor(1e7 / Math.Max(1, total + additions.Values.Sum()))));
-
-            if (scale > 1)
-            {
-                foreach (var dist in pool)
-                {
-                    dist.RelativeProbability = (float)Math.Round((dist.RelativeProbability ?? 0) * scale);
-                }
-            }
-
-            foreach ((MongoId tpl, double weight) in additions)
-            {
-                float scaled = (float)Math.Max(1, Math.Round(weight * scale));
-                var existing = pool.FirstOrDefault(d => d.Tpl == tpl);
-                if (existing is not null)
-                {
-                    existing.RelativeProbability = Math.Max(existing.RelativeProbability ?? 0, scaled);
-                }
-                else
-                {
-                    pool.Add(new ItemDistribution { Tpl = tpl, RelativeProbability = scaled, ExtensionData = [] });
-                }
-            }
-
-            details.ItemDistribution = pool;
+                var distribution = pool.FirstOrDefault(item => item.Tpl == pair.Key)
+                    ?? new ItemDistribution { Tpl = pair.Key, ExtensionData = [] };
+                distribution.RelativeProbability = (float)Math.Max(1, Math.Round(pair.Value * 100000));
+                return distribution;
+            }).ToList();
         }
-
-        for (int i = 0; i < entries.Count; i++)
-        {
-            summary.Add($"{entries[i].item.Name} → {addedPerEntry[i]} " + configService.L("tipos de contêiner", "container types"));
-        }
-
-        return (addedPerEntry.Sum(), 0, summary);
+        return (counts.Sum(), 0, entries.Select((entry, i) => $"{entry.item.Name} → {counts[i]} " + configService.L("tipos de contêiner", "container types")).ToList());
     }
-
     private bool StaticMatches(StaticLootSettings settings, MongoId containerId, List<ItemDistribution> pool, CatalogItem item)
     {
         return settings.Mode switch
@@ -369,81 +319,60 @@ public class LootInjectionService(
     {
         var entries = EntriesFor(mapId).Where(e => (e.Loose.Enabled && ChanceFor(e.Loose.ChancePercent, e.Loose.MapChances, mapId) > 0) || e.Guaranteed).ToList();
         var summary = new List<string>();
-        if (entries.Count == 0 || data.Spawnpoints is null)
-        {
-            return (0, 0, summary);
-        }
-
-        var spawnpoints = data.Spawnpoints as List<Spawnpoint> ?? data.Spawnpoints.ToList();
+        if (entries.Count == 0 || data.Spawnpoints is null) return (0, 0, summary);
+        var spawnpoints = data.Spawnpoints.ToList();
         data.Spawnpoints = spawnpoints;
-        double looseRatio = LooseRatio(mapId, data.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(spawnpoints));
-
-        var originals = spawnpoints
-            .Where(sp => sp.Template?.Items is not null && sp.ItemDistribution is not null && sp.Template.IsAlwaysSpawn != true)
-            .Select(sp => (
-                sp,
-                parents: sp.Template!.Items!.Where(i => i.ComposedKey is not null).SelectMany(i => AncestorsOf(i.Template)).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                tpls: sp.Template.Items!.Select(i => i.Template.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                weight: sp.ItemDistribution!.Sum(d => d.RelativeProbability ?? 0)
-            ))
-            .ToList();
-
-        int total = 0;
+        double ratio = LooseRatio(mapId, data.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(spawnpoints));
         var forced = new List<Spawnpoint>();
-        foreach (var entry in entries)
+        var originals = spawnpoints.Where(sp => sp.Template?.Items is not null && sp.ItemDistribution is not null && sp.Template.IsAlwaysSpawn != true && sp.ItemDistribution.Sum(item => item.RelativeProbability ?? 0) > 0)
+            .Select(sp => (sp, parents: sp.Template!.Items!.Where(item => item.ComposedKey is not null).SelectMany(item => AncestorsOf(item.Template)).ToHashSet(StringComparer.OrdinalIgnoreCase)))
+            .ToList();
+        foreach (var entry in entries.Where(entry => entry.Guaranteed).GroupBy(entry => entry.Tpl).Select(group => group.First()))
         {
             var item = catalog.Get(entry.Tpl)!;
-            string composedKey = $"customlootpool_{item.Id}";
-            // Without loose loot on, the guaranteed copy goes to spots that already hold similar items
             var mode = entry.Loose.Enabled ? entry.Loose.Mode : TargetMode.Similar;
-            var targets = TargetCategories(mode, entry.Loose.Categories, item);
-            var matching = originals
-                .Where(o => o.weight > 0 && !o.tpls.Contains(item.Id) && (mode == TargetMode.All || o.parents.Overlaps(targets)))
-                .ToList();
-
-            if (entry.Guaranteed)
-            {
-                var spots = matching.Count > 0 ? matching : originals.Where(o => o.weight > 0).ToList();
-                forced.AddRange(spots.Select((o, i) => BuildForcedSpawnpoint(o.sp, item, i)));
-                summary.Add($"{item.Name} → " + configService.L($"1 garantido entre {spots.Count} pontos", $"1 guaranteed among {spots.Count} spots"));
-            }
-
-            double mapChance = ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId);
-            if (!entry.Loose.Enabled || mapChance <= 0)
-            {
-                continue;
-            }
-
-            double chance = ClampChance(mapChance / (Compensate ? looseRatio : 1));
-            int added = 0;
-
-            foreach (var (sp, _, _, weight) in matching)
-            {
-
-                var newItems = BuildLooseItems(item, composedKey);
-                sp.Template!.Items = sp.Template.Items!.Concat(newItems).ToList();
-                sp.ItemDistribution = sp.ItemDistribution!
-                    .Append(new LooseLootItemDistribution
-                    {
-                        ComposedKey = new ComposedKey { Key = composedKey },
-                        RelativeProbability = weight * chance / (100 - chance),
-                    })
-                    .ToList();
-                added++;
-            }
-
-            total += added;
-            summary.Add($"{item.Name} → {added} " + configService.L("pontos de spawn", "spawn points"));
+            var categories = TargetCategories(mode, entry.Loose.Categories, item);
+            var matching = originals.Where(o => mode == TargetMode.All || o.parents.Overlaps(categories)).ToList();
+            if (matching.Count == 0) matching = originals;
+            forced.AddRange(matching.Select((point, i) => BuildForcedSpawnpoint(point.sp, item, i)));
+            summary.Add($"{item.Name} → 1 " + configService.L("garantido", "guaranteed"));
         }
-
-        if (forced.Count > 0)
+        int count = 0;
+        foreach (var (sp, parents) in originals)
         {
-            data.SpawnpointsForced = (data.SpawnpointsForced ?? []).Concat(forced).ToList();
+            var matching = entries.Where(entry => entry.Loose.Enabled && ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId) > 0
+                && (entry.Loose.Mode == TargetMode.All || parents.Overlaps(TargetCategories(entry.Loose.Mode, entry.Loose.Categories, catalog.Get(entry.Tpl)!))))
+                .GroupBy(entry => entry.Tpl).ToDictionary(group => group.Key, group => ClampChance(group.Max(entry => ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId)) / (Compensate ? ratio : 1)));
+            if (matching.Count == 0) continue;
+            var roots = sp.Template!.Items!.Where(item => item.ComposedKey is not null).GroupBy(item => item.ComposedKey!).ToDictionary(group => group.Key, group => group.First());
+            var distributions = sp.ItemDistribution!.Where(item => item.ComposedKey?.Key is not null && roots.ContainsKey(item.ComposedKey.Key)).ToList();
+            var original = distributions.GroupBy(item => roots[item.ComposedKey!.Key!].Template.ToString())
+                .ToDictionary(group => group.Key, group => group.Sum(item => item.RelativeProbability ?? 0));
+            if (original.Values.Sum() <= 0) continue;
+            var weights = PoolWeights.Calculate(original, matching);
+            foreach (var (tpl, chance) in matching)
+            {
+                if (original.ContainsKey(tpl)) continue;
+                string key = $"customlootpool_{tpl}";
+                var items = BuildLooseItems(catalog.Get(tpl)!, key);
+                sp.Template.Items = sp.Template.Items!.Concat(items).ToList();
+                roots[key] = items.First(item => item.ComposedKey == key);
+                distributions.Add(new LooseLootItemDistribution { ComposedKey = new ComposedKey { Key = key }, RelativeProbability = 1 });
+            }
+            foreach (var group in distributions.GroupBy(item => roots[item.ComposedKey!.Key!].Template.ToString()))
+            {
+                double total = group.Sum(item => item.RelativeProbability ?? 0);
+                int alternatives = group.Count();
+                foreach (var item in group)
+                    item.RelativeProbability = weights[group.Key] * (total > 0 ? (item.RelativeProbability ?? 0) / total : 1.0 / alternatives);
+            }
+            sp.ItemDistribution = distributions.Where(item => item.RelativeProbability > 0).ToList();
+            count++;
         }
-
-        return (0, total, summary);
+        if (forced.Count > 0) data.SpawnpointsForced = (data.SpawnpointsForced ?? []).Concat(forced).ToList();
+        if (count > 0) summary.Add($"{count} " + configService.L("pontos de spawn ajustados", "spawn points adjusted"));
+        return (0, count, summary);
     }
-
     /// <summary>
     /// SPT spawns one forced spawnpoint per template id, drawn among entries sharing that id,
     /// so every candidate spot gets the same id and the item lands on one of them each raid
@@ -500,8 +429,9 @@ public class LootInjectionService(
         ];
     }
 
-    public async Task<List<SimResult>> Simulate(LootEntry entry, int raids, bool compensate, Action<string>? progress = null, CancellationToken ct = default)
+    public async Task<List<SimResult>> Simulate(LootEntry entry, int raids, bool compensate, Action<string>? progress = null, CancellationToken ct = default, LootPoolConfig? context = null)
     {
+        if (raids is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(raids));
         var results = new List<SimResult>();
         var item = catalog.Get(entry.Tpl);
         if (item is null)
@@ -512,8 +442,15 @@ public class LootInjectionService(
         await SimLock.WaitAsync(ct);
         try
         {
-            var generator = (LocationLootGenerator)services.GetService(typeof(LocationLootGenerator))!;
-            var sim = configService.CloneConfigOf(new LootPoolConfig { Entries = [entry] }).Entries[0];
+            using var scope = services.CreateScope();
+            // Explicitly pair a fresh generator with its own counter; never change the live raid's counter.
+            var counter = new CounterTrackerHelper();
+            var resolved = scope.ServiceProvider.GetRequiredService<LocationLootGenerator>();
+            var generator = (LocationLootGenerator)ActivatorUtilities.CreateInstance(scope.ServiceProvider, resolved.GetType(), counter);
+            var simulationConfig = configService.CloneConfigOf(context ?? new LootPoolConfig { Entries = [entry] });
+            int index = context?.Entries.IndexOf(entry) ?? 0;
+            if (index < 0) { simulationConfig.Entries.Add(ConfigService.Clone(entry)); index = simulationConfig.Entries.Count - 1; }
+            var sim = simulationConfig.Entries[index];
             sim.Enabled = true;
             var tpl = new MongoId(item.Id);
 
@@ -531,27 +468,26 @@ public class LootInjectionService(
                 {
                     int staticCount = 0, looseCount = 0;
                     _simEntry = sim;
+                    _simEntries = simulationConfig.Entries;
                     _simCompensate = compensate;
                     try
                     {
                         for (int i = 0; i < raids; i++)
                         {
+                            ct.ThrowIfCancellationRequested();
                             var ammo = cloner.Clone(location.StaticAmmo) ?? [];
-                            if (sim.Static.Enabled)
-                            {
-                                staticCount += generator.GenerateStaticContainers(mapId, ammo)
-                                    .Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0);
-                            }
-
-                            if ((sim.Loose.Enabled || sim.Guaranteed) && location.LooseLoot?.Value is { } loose)
-                            {
-                                looseCount += generator.GenerateDynamicLoot(loose, ammo, mapId)
-                                    .Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0);
-                            }
+                            var counts = SimulationRaid.Run(counter, locationConfig.LootMaxSpawnLimits.GetValueOrDefault(mapId),
+                                () => generator.GenerateStaticContainers(mapId, ammo).Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0),
+                                () => location.LooseLoot?.Value is { } loose
+                                    ? generator.GenerateDynamicLoot(cloner.Clone(loose)!, ammo, mapId).Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0)
+                                    : 0);
+                            staticCount += counts.Static;
+                            looseCount += counts.Loose;
                         }
 
                         return (staticCount, looseCount, (string?)null);
                     }
+                    catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
                         // Other loot generators can throw on maps they don't know (e.g. Lots of Loot on Icebreaker)
@@ -561,6 +497,7 @@ public class LootInjectionService(
                     finally
                     {
                         _simEntry = null;
+                        _simEntries = null;
                         _simCompensate = null;
                     }
                 }, ct);
@@ -807,12 +744,13 @@ public class LootInjectionService(
 
     private sealed class ItemStat
     {
-        public double Share { get; set; }
-        public int Pools { get; set; }
-        public HashSet<string> Places { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, (string Map, string Place, double Share)> Contributions { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public double Share => Contributions.Values.Sum(value => value.Share);
+        public int Pools => Contributions.Count;
+        public HashSet<string> Places => Contributions.Values.Select(value => value.Place).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void AddStat(Dictionary<string, ItemStat> bucket, string tpl, double share, string place)
+    private static void AddStat(Dictionary<string, ItemStat> bucket, string tpl, double share, string place, string map)
     {
         if (!bucket.TryGetValue(tpl, out var stat))
         {
@@ -820,9 +758,8 @@ public class LootInjectionService(
             bucket[tpl] = stat;
         }
 
-        stat.Share += share;
-        stat.Pools++;
-        stat.Places.Add(place);
+        string key = map + ":" + place;
+        stat.Contributions[key] = (map, place, stat.Contributions.GetValueOrDefault(key).Share + share);
     }
 
     private sealed class PoolIndex
@@ -842,11 +779,18 @@ public class LootInjectionService(
 
     public bool PoolIndexReady => _poolIndex is { IsCompletedSuccessfully: true };
 
+    public async Task WarmPoolIndexAsync()
+    {
+        try { await EnsurePoolIndex(); }
+        catch (Exception ex) { logger.Warning($"{ConfigService.LogPrefix} Pool preview unavailable; retry from the page: {ex.Message}"); }
+    }
+
     public Task EnsurePoolIndex()
     {
         lock (_poolIndexLock)
         {
-            return _poolIndex ??= Task.Run(BuildPoolIndex);
+            if (_poolIndex is null || _poolIndex.IsFaulted || _poolIndex.IsCanceled) _poolIndex = Task.Run(BuildPoolIndex);
+            return _poolIndex;
         }
     }
 
@@ -887,7 +831,7 @@ public class LootInjectionService(
                             }
 
                             maps.Add(mapId);
-                            AddStat(Bucket(index.StaticItems, category), dist.Tpl.ToString(), (dist.RelativeProbability ?? 0) / total, containerId.ToString());
+                            AddStat(Bucket(index.StaticItems, category), dist.Tpl.ToString(), (dist.RelativeProbability ?? 0) / total, containerId.ToString(), mapId);
                         }
                     }
                 }
@@ -928,7 +872,7 @@ public class LootInjectionService(
 
                             if (total > 0)
                             {
-                                AddStat(Bucket(index.LooseItems, category), root.Template.ToString(), weights.GetValueOrDefault(root.ComposedKey!) / total, $"{mapId}:{spIndex}");
+                                AddStat(Bucket(index.LooseItems, category), root.Template.ToString(), weights.GetValueOrDefault(root.ComposedKey!) / total, $"{mapId}:{spIndex}", mapId);
                             }
                         }
                     }
@@ -1039,7 +983,9 @@ public class LootInjectionService(
         {
             foreach (var (tpl, stat) in (loose ? index.LooseItems : index.StaticItems).GetValueOrDefault(category) ?? [])
             {
-                stats.TryAdd(tpl, stat);
+                if (!stats.TryGetValue(tpl, out var filtered)) { filtered = new ItemStat(); stats[tpl] = filtered; }
+                foreach (var pair in stat.Contributions.Where(pair => MapAllowed(pair.Value.Map)))
+                    filtered.Contributions.TryAdd(pair.Key, pair.Value);
             }
         }
 

@@ -24,7 +24,7 @@ public class LateLoad(ConfigService configService, ItemCatalogService catalog, L
         injection.Register();
         configService.ConfigChanged += injection.InvalidateCaches;
         extra.EnablePatches();
-        _ = injection.EnsurePoolIndex();
+        _ = injection.WarmPoolIndexAsync();
         return Task.CompletedTask;
     }
 }

@@ -11,6 +11,8 @@ using SPTarkov.Server.Core.Services.Bot;
 using SPTarkov.Server.Core.Services.InRaid;
 using SPTarkov.Server.Core.Utils.Cloners;
 using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Services.Profile;
+using SPTarkov.Server.Core.Callbacks;
 
 namespace CustomLootPool.Services;
 
@@ -21,7 +23,8 @@ public class ExtraLootService(
     ItemCatalogService catalog,
     PresetHelper presetHelper,
     ICloner cloner,
-    ISptLogger<ExtraLootService> logger
+    ISptLogger<ExtraLootService> logger,
+    ProfileActivityService profileActivityService
 )
 {
     private static readonly HashSet<string> ScavRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -32,12 +35,22 @@ public class ExtraLootService(
     internal static ExtraLootService? Instance { get; private set; }
 
     /// <summary>Map of the raid being generated, used by the map filter for bots and airdrops</summary>
-    public string? CurrentMap { get; private set; }
+    private static readonly AsyncLocal<string?> RequestMap = new();
+    public string? CurrentMap => RequestMap.Value;
+
+    internal static IDisposable EnterMap(string? map)
+    {
+        var previous = RequestMap.Value;
+        RequestMap.Value = map?.ToLowerInvariant();
+        return new MapScope(() => RequestMap.Value = previous);
+    }
+    private sealed class MapScope(Action restore) : IDisposable { public void Dispose() => restore(); }
+    private IDisposable EnterSession(MongoId session) => EnterMap(profileActivityService.GetProfileActivityRaidData(session)?.RaidConfiguration?.Location);
 
     public void EnablePatches()
     {
         Instance = this;
-        foreach (AbstractPatch patch in new AbstractPatch[] { new RaidStartPatch(), new BotLootPatch(), new AirdropPatch() })
+        foreach (AbstractPatch patch in new AbstractPatch[] { new BotRequestPatch(), new AirdropRequestPatch(), new BotLootPatch(), new AirdropPatch() })
         {
             try
             {
@@ -61,12 +74,10 @@ public class ExtraLootService(
         return cfg.Entries.Where(e =>
             e.Enabled
             && catalog.Exists(e.Tpl)
-            && (e.Maps.Count == 0 || CurrentMap is null || e.Maps.Contains(CurrentMap, StringComparer.OrdinalIgnoreCase))
+            && (e.Maps.Count == 0 || (CurrentMap is not null && e.Maps.Contains(CurrentMap, StringComparer.OrdinalIgnoreCase)))
             && LootInjectionService.IsActiveNow(e.Schedule)
             && filter(e));
     }
-
-    internal void OnRaidStart(string map) => CurrentMap = map.ToLowerInvariant();
 
     internal Dictionary<MongoId, double> AddBotLoot(string role, bool isPmc, string lootType, Dictionary<MongoId, double> pool)
     {
@@ -95,19 +106,8 @@ public class ExtraLootService(
             return pool;
         }
 
-        var result = new Dictionary<MongoId, double>(pool);
-        foreach (var entry in entries)
-        {
-            var tpl = new MongoId(entry.Tpl);
-            double chance = Math.Clamp(entry.Bots.ChancePercent, 0.001, 90);
-            double others = pool.Where(kv => kv.Key != tpl).Sum(kv => kv.Value);
-            if (others > 0)
-            {
-                result[tpl] = Math.Max(result.GetValueOrDefault(tpl), others * chance / (100 - chance));
-            }
-        }
-
-        return result;
+        return PoolWeights.Calculate(pool, entries.Select(entry => new KeyValuePair<MongoId, double>(new(entry.Tpl), entry.Bots.ChancePercent)))
+            .Where(pair => pair.Value > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
     internal IEnumerable<List<Item>> AddAirdropLoot(IEnumerable<List<Item>> pool)
@@ -138,13 +138,24 @@ public class ExtraLootService(
         return [new Item { Id = new MongoId(), Template = tpl, Upd = new Upd { StackObjectsCount = 1, SpawnedInSession = true } }];
     }
 
-    private sealed class RaidStartPatch : AbstractPatch
+    private sealed class BotRequestPatch : AbstractPatch
     {
         protected override MethodBase? GetTargetMethod() =>
-            typeof(LocationLifecycleService).GetMethod(nameof(LocationLifecycleService.GenerateLocationAndLoot));
+            typeof(BotCallbacks).GetMethod(nameof(BotCallbacks.GenerateBots));
 
         [PatchPrefix]
-        public static void Prefix(string name) => Instance?.OnRaidStart(name);
+        public static void Prefix(MongoId sessionID, out IDisposable? __state) => __state = Instance?.EnterSession(sessionID);
+        [PatchFinalizer]
+        public static Exception? Finalizer(Exception? __exception, IDisposable? __state) { __state?.Dispose(); return __exception; }
+    }
+
+    private sealed class AirdropRequestPatch : AbstractPatch
+    {
+        protected override MethodBase? GetTargetMethod() => typeof(LocationCallbacks).GetMethod(nameof(LocationCallbacks.GetAirdropLoot));
+        [PatchPrefix]
+        public static void Prefix(MongoId sessionID, out IDisposable? __state) => __state = Instance?.EnterSession(sessionID);
+        [PatchFinalizer]
+        public static Exception? Finalizer(Exception? __exception, IDisposable? __state) { __state?.Dispose(); return __exception; }
     }
 
     private sealed class BotLootPatch : AbstractPatch

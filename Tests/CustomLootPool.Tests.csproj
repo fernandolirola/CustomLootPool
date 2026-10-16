@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsPackable>false</IsPackable>
+    <SPTPath Condition="'$(SPTPath)' == ''">C:\SPT</SPTPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\CustomLootPool.csproj" ReferenceOutputAssembly="false" />
+    <Reference Include="CustomLootPool"><HintPath>..\bin\$(Configuration)\net10.0\CustomLootPool.dll</HintPath></Reference>
+    <Reference Include="$(SPTPath)\SPT_Runtime\SPTarkov.Common.dll;$(SPTPath)\SPT_Runtime\SPTarkov.DI.dll;$(SPTPath)\SPT_Runtime\SPTarkov.Reflection.dll;$(SPTPath)\SPT_Runtime\SPTarkov.Server.Core.dll;$(SPTPath)\SPT_Runtime\SPTarkov.Server.Web.dll;$(SPTPath)\SPT_Runtime\0Harmony.dll;$(SPTPath)\SPT_Runtime\SemanticVersioning.dll;$(SPTPath)\SPT_Runtime\Spectre.Console.dll;$(SPTPath)\SPT_Runtime\Spectre.Console.Ansi.dll" />
+  </ItemGroup>
+</Project>

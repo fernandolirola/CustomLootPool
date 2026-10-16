@@ -2,113 +2,138 @@ using System.Reflection;
 using System.Text.Json;
 using CustomLootPool.Models;
 using SPTarkov.DI.Annotations;
-using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Helpers.Server;
-using SPTarkov.Server.Core.Helpers.Items;
 using SPTarkov.Common.Models.Logging;
-using SPTarkov.Server.Core.Models.Utils;
 
 namespace CustomLootPool.Services;
 
+public sealed class ConfigConflictException() : InvalidOperationException("A configuração foi alterada em outra aba. Recarregue antes de salvar. / Configuration changed in another editor. Reload before saving.");
+public sealed record ConfigSnapshot(LootPoolConfig Config, int Revision);
+
 [Injectable(InjectionType.Singleton)]
-public class ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger)
+public class ConfigService
 {
     public const string LogPrefix = "[Custom Loot Pool]";
-
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
+        WriteIndented = true, PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true,
     };
+    private readonly Lock _writeLock = new();
+    private readonly ISptLogger<ConfigService> _logger;
+    private ConfigSnapshot _state = new(new(), 0);
 
-    public string ModPath { get; } = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());
-
+    public ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger)
+        : this(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), logger) { }
+    internal ConfigService(string modPath, ISptLogger<ConfigService> logger)
+    {
+        ModPath = Path.GetFullPath(modPath);
+        _logger = logger;
+    }
+    public string ModPath { get; }
     public string ConfigPath => Path.Combine(ModPath, "config.json");
-
-    /// <summary>Live config, replaced as a whole on save so readers never see a half-edited state</summary>
-    public LootPoolConfig Config { get; private set; } = new();
-
-    /// <summary>Used to log the injection summary once per saved config instead of on every loot read</summary>
-    public int Revision { get; private set; }
-
+    public LootPoolConfig Config => Volatile.Read(ref _state).Config;
+    public int Revision => Volatile.Read(ref _state).Revision;
     public event Action? ConfigChanged;
-
     public bool IsPortuguese => string.Equals(Config.Language, "pt", StringComparison.OrdinalIgnoreCase);
-
     public string L(string pt, string en) => IsPortuguese ? pt : en;
+
+    public ConfigSnapshot GetSnapshot()
+    {
+        lock (_writeLock) return new(CloneConfigOf(_state.Config), _state.Revision);
+    }
 
     public void SetLanguage(string language)
     {
-        var updated = CloneConfig();
-        updated.Language = language;
-        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(updated, JsonOptions));
-        Config = updated;
+        lock (_writeLock)
+        {
+            var updated = CloneConfigOf(_state.Config);
+            updated.Language = language;
+            ConfigValidation.Normalize(updated);
+            WriteAtomic(updated);
+            Volatile.Write(ref _state, new(updated, _state.Revision));
+        }
+        NotifyChanged();
     }
 
     public void Load()
     {
-        try
+        lock (_writeLock)
         {
-            if (!File.Exists(ConfigPath))
-            {
-                logger.Warning($"{LogPrefix} config.json not found, creating a new one");
-                Save(new LootPoolConfig());
-                return;
-            }
-
-            var loaded = JsonSerializer.Deserialize<LootPoolConfig>(File.ReadAllText(ConfigPath), JsonOptions);
-            Config = loaded ?? new LootPoolConfig();
-            Revision++;
-            logger.Success($"{LogPrefix} " + L($"Config carregada: {Config.Entries.Count} item(ns) configurado(s)", $"Config loaded: {Config.Entries.Count} item(s) configured"));
-        }
-        catch (Exception ex)
-        {
-            // Keep the broken file, otherwise the next save from the page would overwrite the user's entries
-            var backup = ConfigPath + ".broken-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json";
             try
             {
-                File.Copy(ConfigPath, backup, overwrite: false);
+                var loaded = File.Exists(ConfigPath)
+                    ? JsonSerializer.Deserialize<LootPoolConfig>(File.ReadAllText(ConfigPath), JsonOptions) ?? throw new InvalidDataException("Config cannot be null.")
+                    : new LootPoolConfig();
+                ConfigValidation.Normalize(loaded);
+                if (!File.Exists(ConfigPath)) WriteAtomic(loaded);
+                Volatile.Write(ref _state, new(loaded, _state.Revision + 1));
+                _logger.Success($"{LogPrefix} Config loaded: {loaded.Entries.Count} item(s) configured");
             }
-            catch
+            catch (Exception ex)
             {
-                backup = "(backup failed)";
+                var backup = ConfigPath + ".broken-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N") + ".json";
+                try { File.Copy(ConfigPath, backup); }
+                catch { backup = "(backup failed)"; }
+                _logger.Error($"{LogPrefix} Invalid config; retaining the last valid config. Backup: {backup}. Error: {ex.Message}");
             }
-
-            logger.Error($"{LogPrefix} Failed to read config.json, using an empty config. Your file was copied to {backup}. Error: {ex.Message}");
-            Config = new LootPoolConfig();
         }
     }
 
-    public void Save(LootPoolConfig newConfig)
+    public int Save(LootPoolConfig newConfig, int expectedRevision)
     {
-        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(newConfig, JsonOptions));
-        Config = newConfig;
-        Revision++;
-        ConfigChanged?.Invoke();
+        int revision;
+        lock (_writeLock)
+        {
+            if (expectedRevision != _state.Revision) throw new ConfigConflictException();
+            var updated = CloneConfigOf(newConfig);
+            updated.Language = _state.Config.Language; // Language is saved independently by the editor.
+            WriteAtomic(updated);
+            revision = _state.Revision + 1;
+            Volatile.Write(ref _state, new(updated, revision));
+        }
+        NotifyChanged();
+        return revision;
     }
 
-    public LootPoolConfig CloneConfig() => CloneConfigOf(Config);
+    private void WriteAtomic(LootPoolConfig value)
+    {
+        var temporary = ConfigPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                JsonSerializer.Serialize(stream, value, JsonOptions);
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(temporary, ConfigPath, overwrite: true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
 
+    private void NotifyChanged()
+    {
+        foreach (Action handler in ConfigChanged?.GetInvocationList() ?? [])
+        {
+            try { handler(); }
+            catch (Exception ex) { _logger.Warning($"{LogPrefix} Config notification failed: {ex.Message}"); }
+        }
+    }
+
+    public LootPoolConfig CloneConfig() => GetSnapshot().Config;
     public static T Clone<T>(T source) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions)!;
-
     public static string ExportEntries(IEnumerable<LootEntry> entries) => JsonSerializer.Serialize(new { Entries = entries }, JsonOptions);
-
-    /// <summary>Accepts a full config, an { "Entries": [...] } object or a bare array</summary>
     public static List<LootEntry> ImportEntries(string json)
     {
-        var trimmed = json.TrimStart();
-        if (trimmed.StartsWith('['))
-        {
-            return JsonSerializer.Deserialize<List<LootEntry>>(trimmed, JsonOptions) ?? [];
-        }
-
-        return JsonSerializer.Deserialize<LootPoolConfig>(trimmed, JsonOptions)?.Entries ?? [];
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+        var root = document.RootElement;
+        List<LootEntry>? entries;
+        if (root.ValueKind == JsonValueKind.Array) entries = root.Deserialize<List<LootEntry>>(JsonOptions);
+        else if (root.ValueKind == JsonValueKind.Object && root.EnumerateObject().Any(property => property.Name.Equals("Entries", StringComparison.OrdinalIgnoreCase)))
+            entries = root.Deserialize<LootPoolConfig>(JsonOptions)?.Entries;
+        else throw new InvalidDataException("Expected an entries array or an object containing Entries.");
+        if (entries is null) throw new InvalidDataException("Entries cannot be null.");
+        return ConfigValidation.Normalize(new LootPoolConfig { Entries = entries }).Entries;
     }
-
-    public LootPoolConfig CloneConfigOf(LootPoolConfig source)
-    {
-        return JsonSerializer.Deserialize<LootPoolConfig>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions)!;
-    }
+    public LootPoolConfig CloneConfigOf(LootPoolConfig source) => ConfigValidation.Normalize(Clone(source));
 }

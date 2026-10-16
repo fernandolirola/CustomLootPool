@@ -1,6 +1,6 @@
 # Custom Loot Pool
 
-Server mod for **SPT 4.1** that lets you add any item to the map loot pools, both in containers (crates, jackets, drawers...) and as loose loot (floor / shelves), from a page in the SPT server panel.
+Server mod for **SPT 4.1.6+ (4.1.x)** that lets you add any item to the map loot pools, both in containers (crates, jackets, drawers...) and as loose loot (floor / shelves), from a page in the SPT server panel.
 
 *(Português abaixo)*
 
@@ -24,6 +24,9 @@ Server mod for **SPT 4.1** that lets you add any item to the map loot pools, bot
 
 Download the release zip and extract it into your game folder (the one that contains `SPT_Runtime`), so you end up with `SPT_Runtime/user/mods/CustomLootPool`.
 
+Starting with 1.2.1, the release ZIP omits `config.json` so an update preserves your
+existing settings. A new installation creates its default config on first start.
+
 ## Usage
 
 1. Start the SPT server.
@@ -38,6 +41,21 @@ Download the release zip and extract it into your game folder (the one that cont
 - **Airdrops**: chance that a crate contains one of this item.
 
 Everything is stored in `config.json` next to the DLL.
+
+Chances that affect the same pool are solved together. When their sum reaches or
+exceeds 100%, the configured items share the entire pool in proportion to their
+requested chances. If the pool has no other valid candidates, its configured
+items also share the full pool. Duplicate entries for the same item use the
+highest currently applicable chance. Existing loose-loot candidates are updated
+instead of being skipped.
+
+Editors use revision checks: if another tab saves while you have local edits,
+reload before saving. The stale editor cannot overwrite the newer config.
+
+Simulation supports 4, 25 or 100 raids per map and includes all entries currently
+on the page. It applies map spawn caps independently for each simulated raid.
+Zero observations in a small random sample do not establish a zero spawn chance.
+Bot/airdrop map filters use the request's session, with no shared last-map value.
 
 ### Example: recreating the Smugglers event
 
@@ -56,7 +74,19 @@ Requires the .NET 10 SDK.
 dotnet build -c Release
 ```
 
-Copy `CustomLootPool.dll`, `config.json` and the `wwwroot` folder from `bin/Release/net10.0/` into `SPT_Runtime/user/mods/CustomLootPool/`.
+Copy `CustomLootPool.dll` and the `wwwroot` folder from `bin/Release/net10.0/` into `SPT_Runtime/user/mods/CustomLootPool/`.
+
+For an update, copy the DLL and `wwwroot` only; keep your existing `config.json`.
+For a new installation, the server creates the config automatically.
+
+Regression tests require a local SPT 4.1 installation (default `C:\SPT`) and run
+without starting the game or loading player profiles:
+
+```powershell
+dotnet test Tests/CustomLootPool.Tests.csproj -c Release -p:SPTPath=C:\SPT
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for the 1.2.1 fixes.
 
 ## Credits
 
@@ -92,6 +122,19 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 
 Baixe o zip da release e extraia na pasta do jogo (a que contém `SPT_Runtime`), ficando `SPT_Runtime/user/mods/CustomLootPool`.
 
+A partir da versão 1.2.1, o ZIP não inclui `config.json`: atualizar preserva suas
+configurações. Na primeira instalação, o arquivo é criado ao iniciar o servidor.
+
+As chances são calculadas juntas por pool. Ao atingir ou ultrapassar 100%, os
+itens configurados dividem todo o pool proporcionalmente. Se não houver outros
+candidatos válidos, também dividem todo o pool. Entradas duplicadas usam a maior
+chance aplicável. Itens que já aparecem no loot solto têm o peso ajustado.
+
+Uma aba desatualizada não pode sobrescrever o que outra salvou: recarregue antes
+de salvar novamente. A simulação permite 4, 25 ou 100 raids por mapa, usa os
+limites de spawn e considera as outras entradas da tela. Uma amostra sem
+ocorrências não prova que a chance seja zero.
+
 ### Uso
 
 1. Inicie o servidor SPT.
@@ -106,3 +149,7 @@ Clique no preset **Evento dos Smugglers**, ou adicione **Locked case** (`6740987
 - Sealed box + Multitool → Workbench → Opened box (6 itens aleatórios)
 
 Os dois crafts já são liberados pelo próprio SPT.
+
+## Validation for 1.2.1
+
+Built with .NET SDK 10.0.402 and SPTushonka 4.1.6 packages. All 26 regression tests pass against SPT 4.1.6 assemblies. A clean, isolated SPT 4.1.6 server loads the mod, registers hooks on 13 maps and serves the configuration page and CSS. No existing profiles were used. In-game raids and Fika sessions have not been verified for this release.

@@ -6,17 +6,21 @@
     <OutputType>Library</OutputType>
     <AssemblyName>CustomLootPool</AssemblyName>
     <RootNamespace>CustomLootPool</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SPTarkov.Common" Version="4.1.2" ExcludeAssets="runtime" />
-    <PackageReference Include="SPTarkov.DI" Version="4.1.2" ExcludeAssets="runtime" />
-    <PackageReference Include="SPTarkov.Server.Core" Version="4.1.2" ExcludeAssets="runtime" />
-    <PackageReference Include="SPTarkov.Reflection" Version="4.1.2" ExcludeAssets="runtime" />
-    <PackageReference Include="SPTarkov.Server.Web" Version="4.1.2" ExcludeAssets="runtime" />
+    <Compile Remove="Tests\**;test-artifacts\**" />
+    <Content Remove="Tests\**;test-artifacts\**" />
+    <None Remove="Tests\**;test-artifacts\**" />
+    <InternalsVisibleTo Include="CustomLootPool.Tests" />
+    <PackageReference Include="SPTushonka.Common" Version="4.1.6" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTushonka.DI" Version="4.1.6" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTushonka.Server.Core" Version="4.1.6" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTushonka.Reflection" Version="4.1.6" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTushonka.Server.Web" Version="4.1.6" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>

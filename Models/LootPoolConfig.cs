@@ -79,6 +79,7 @@ public class StaticLootSettings
     public double ChancePercent { get; set; } = 1.0;
 
     /// <summary>Overrides ChancePercent on specific maps</summary>
+    [JsonConverter(typeof(MapChancesConverter))]
     public Dictionary<string, double> MapChances { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
@@ -94,6 +95,7 @@ public class LooseLootSettings
     /// <summary>Chance (0-90%) that a matching spawn point, once it spawns, spawns this item</summary>
     public double ChancePercent { get; set; } = 1.0;
 
+    [JsonConverter(typeof(MapChancesConverter))]
     public Dictionary<string, double> MapChances { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
