@@ -25,7 +25,11 @@ public sealed record ItemWarning(string Pt, string En, bool Blocking);
 
 public sealed record MultiplierInfo(string MapId, string MapName, double Static, double Loose);
 
-public sealed record SimilarPool(string CategoryName, List<CatalogItem> SampleItems, int TotalItems, List<string> Containers, int Spots);
+public sealed record PoolCategory(string Id, string Name, string Path, int ItemCount);
+
+public sealed record PoolItem(CatalogItem Item, double AveragePercent, int Places);
+
+public sealed record SimilarPool(string CategoryName, List<PoolItem> Items, List<string> Containers, int Spots);
 
 public sealed record MapReach(string MapId, string MapName, int ContainerTypes, List<string> ContainerNames, int Spawnpoints);
 
@@ -77,10 +81,7 @@ public class LootInjectionService(
         _baseStatic = new Dictionary<string, double>(locationConfig.StaticLootMultiplier, StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Called after other mods, so items they add are known and our transformers run after theirs
-    /// (Lots of Loot rounds container weights in its own transformer)
-    /// </summary>
+    /// <summary>Runs after other mods so their items are known and their weight rounding (Lots of Loot) happens before ours</summary>
     public void Register()
     {
 
@@ -282,8 +283,13 @@ public class LootInjectionService(
         {
             TargetMode.All => true,
             TargetMode.Selected => settings.Containers.Any(c => c.Equals(containerId.ToString(), StringComparison.OrdinalIgnoreCase)),
-            _ => pool.Any(d => ParentOf(d.Tpl) == item.ParentId),
+            _ => PoolHasCategory(pool, TargetCategories(settings.Mode, settings.Categories, item)),
         };
+    }
+
+    private bool PoolHasCategory(List<ItemDistribution> pool, HashSet<string> categories)
+    {
+        return categories.Count > 0 && pool.Any(d => AncestorsOf(d.Tpl).Overlaps(categories));
     }
 
     private bool Fits(MongoId containerId, CatalogItem item)
@@ -328,7 +334,7 @@ public class LootInjectionService(
             .Where(sp => sp.Template?.Items is not null && sp.ItemDistribution is not null && sp.Template.IsAlwaysSpawn != true)
             .Select(sp => (
                 sp,
-                parents: sp.Template!.Items!.Where(i => i.ComposedKey is not null).Select(i => ParentOf(i.Template)).ToHashSet(),
+                parents: sp.Template!.Items!.Where(i => i.ComposedKey is not null).SelectMany(i => AncestorsOf(i.Template)).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 tpls: sp.Template.Items!.Select(i => i.Template.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 weight: sp.ItemDistribution!.Sum(d => d.RelativeProbability ?? 0)
             ))
@@ -340,6 +346,7 @@ public class LootInjectionService(
             var item = catalog.Get(entry.Tpl)!;
             double chance = ClampChance(entry.Loose.ChancePercent / (Compensate ? looseRatio : 1));
             string composedKey = $"customlootpool_{item.Id}";
+            var targets = TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item);
             int added = 0;
 
             foreach (var (sp, parents, tpls, weight) in originals)
@@ -349,7 +356,7 @@ public class LootInjectionService(
                     continue;
                 }
 
-                if (entry.Loose.Mode != TargetMode.All && !parents.Contains(item.ParentId))
+                if (entry.Loose.Mode != TargetMode.All && !parents.Overlaps(targets))
                 {
                     continue;
                 }
@@ -402,9 +409,6 @@ public class LootInjectionService(
         ];
     }
 
-    /// <summary>
-    /// Uses whatever LocationLootGenerator is registered, so other loot mods (e.g. Lots of Loot) are reflected in the numbers
-    /// </summary>
     public async Task<List<SimResult>> Simulate(LootEntry entry, int raids, bool compensate, Action<string>? progress = null, CancellationToken ct = default)
     {
         var results = new List<SimResult>();
@@ -482,55 +486,65 @@ public class LootInjectionService(
     }
 
     /// <summary>Computed on the data before injection, otherwise the item itself would make every pool look "similar"</summary>
-    public List<MapReach> Preview(LootEntry entry)
+    public async Task<List<MapReach>> Preview(LootEntry entry)
     {
+        await EnsurePoolIndex();
+        var index = _poolIndex!.Result;
         var result = new List<MapReach>();
-        var item = catalog.Get(entry.Tpl);
-        if (item is null)
+        if (catalog.Get(entry.Tpl) is not { } item)
         {
             return result;
         }
 
-        foreach ((string mapId, Location location) in _maps.OrderBy(m => MapName(m.Key)))
+        var staticTargets = TargetCategories(entry.Static.Mode, entry.Static.Categories, item);
+        var looseTargets = TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item);
+
+        foreach (string mapId in _maps.Keys.OrderBy(MapName))
         {
             if (entry.Maps.Count > 0 && !entry.Maps.Contains(mapId, StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var names = new List<string>();
-            int points = 0;
-            _bypass = true;
-            try
+            var containers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (entry.Static.Enabled)
             {
-                if (entry.Static.Enabled && location.StaticLoot?.Value is { } staticLoot)
+                var onMap = index.MapContainers.GetValueOrDefault(mapId) ?? [];
+                IEnumerable<string> candidates = entry.Static.Mode switch
                 {
-                    foreach ((MongoId containerId, StaticLootDetails details) in staticLoot)
+                    TargetMode.All => onMap,
+                    TargetMode.Selected => entry.Static.Containers.Where(onMap.Contains),
+                    _ => staticTargets.SelectMany(c => (index.StaticContainers.GetValueOrDefault(c) ?? [])
+                        .Where(kv => kv.Value.Contains(mapId))
+                        .Select(kv => kv.Key)),
+                };
+                containers.UnionWith(candidates.Where(id => Fits(new MongoId(id), item)));
+            }
+
+            int points = 0;
+            if (entry.Loose.Enabled)
+            {
+                if (entry.Loose.Mode == TargetMode.All)
+                {
+                    points = index.LooseSpotCount.GetValueOrDefault(mapId);
+                }
+                else
+                {
+                    var union = new HashSet<int>();
+                    foreach (var category in looseTargets)
                     {
-                        var pool = details?.ItemDistribution?.ToList() ?? [];
-                        if (pool.Count > 0 && StaticMatches(entry.Static, containerId, pool, item) && Fits(containerId, item))
+                        if (index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(mapId) is { } set)
                         {
-                            names.Add(catalog.NameOf(containerId.ToString()));
+                            union.UnionWith(set);
                         }
                     }
-                }
 
-                if (entry.Loose.Enabled && location.LooseLoot?.Value?.Spawnpoints is { } spawnpoints)
-                {
-                    points = spawnpoints.Count(sp =>
-                        sp.Template?.Items is not null
-                        && sp.Template.IsAlwaysSpawn != true
-                        && (entry.Loose.Mode == TargetMode.All
-                            || sp.Template.Items.Any(i => i.ComposedKey is not null && ParentOf(i.Template) == item.ParentId))
-                    );
+                    points = union.Count;
                 }
             }
-            finally
-            {
-                _bypass = false;
-            }
 
-            result.Add(new MapReach(mapId, MapName(mapId), names.Count, names.Distinct().OrderBy(n => n).ToList(), points));
+            var names = containers.Select(catalog.NameOf).Distinct().OrderBy(n => n).ToList();
+            result.Add(new MapReach(mapId, MapName(mapId), containers.Count, names, points));
         }
 
         return result;
@@ -538,32 +552,15 @@ public class LootInjectionService(
 
     private List<(string Id, string Name)>? _containerCache;
 
-    public List<(string Id, string Name)> AllContainers()
+    public async Task<List<(string Id, string Name)>> AllContainers()
     {
-        if (_containerCache is not null)
-        {
-            return _containerCache;
-        }
-
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        _bypass = true;
-        try
-        {
-            foreach (var location in _maps.Values)
-            {
-                foreach (var key in location.StaticLoot?.Value?.Keys ?? Enumerable.Empty<MongoId>())
-                {
-                    ids.Add(key.ToString());
-                }
-            }
-        }
-        finally
-        {
-            _bypass = false;
-        }
-
-        _containerCache = ids.Select(id => (id, catalog.NameOf(id))).OrderBy(c => c.Item2).ToList();
-        return _containerCache;
+        await EnsurePoolIndex();
+        return _containerCache ??= _poolIndex!.Result.MapContainers.Values
+            .SelectMany(ids => ids)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(id => (id, catalog.NameOf(id)))
+            .OrderBy(c => c.Item2)
+            .ToList();
     }
 
     private bool Compensate => _simCompensate ?? configService.Config.CompensateLootMultipliers;
@@ -586,7 +583,6 @@ public class LootInjectionService(
         return spawnpoints.Count(sp => sp.Template?.IsAlwaysSpawn != true && (sp.Probability ?? 0) is > 0 and < 1);
     }
 
-    /// <summary>How many times more container items this map rolls compared to before other mods changed the multiplier</summary>
     public double StaticRatio(string mapId)
     {
         double baseValue = Multiplier(_baseStatic, mapId);
@@ -608,7 +604,6 @@ public class LootInjectionService(
         return baseline > 0 ? current / baseline : 1;
     }
 
-    /// <returns>null while the loot data is still being read</returns>
     public List<MultiplierInfo>? GetMultipliers()
     {
         if (!PoolIndexReady)
@@ -629,7 +624,6 @@ public class LootInjectionService(
 
     public bool MultipliersChanged() => GetMultipliers()?.Any(m => Math.Abs(m.Static - 1) > 0.01 || Math.Abs(m.Loose - 1) > 0.01) ?? false;
 
-    /// <summary>Things SPT itself does with the item that would surprise someone adding it to the loot</summary>
     public List<ItemWarning> GetItemWarnings(string tplId)
     {
         var warnings = new List<ItemWarning>();
@@ -687,15 +681,69 @@ public class LootInjectionService(
         return warnings;
     }
 
+    private const string RootItemId = "54009119af1c881c07000029";
+
+    private readonly ConcurrentDictionary<MongoId, HashSet<string>> _ancestors = new();
+
+    /// <summary>Every category above the item (direct parent first), without the generic root "Item"</summary>
+    public HashSet<string> AncestorsOf(MongoId tpl)
+    {
+        return _ancestors.GetOrAdd(tpl, t =>
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var current = t;
+            for (int depth = 0; depth < 32 && templateTable.Items.TryGetValue(current, out var template); depth++)
+            {
+                var parent = template.Parent.ToString();
+                if (string.IsNullOrEmpty(parent) || parent == RootItemId || !result.Add(parent))
+                {
+                    break;
+                }
+
+                current = template.Parent;
+            }
+
+            return result;
+        });
+    }
+
+    private HashSet<string> TargetCategories(TargetMode mode, List<string> categories, CatalogItem item)
+    {
+        return mode == TargetMode.Categories
+            ? categories.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { item.ParentId };
+    }
+
+    private sealed class ItemStat
+    {
+        public double Share { get; set; }
+        public int Pools { get; set; }
+        public HashSet<string> Places { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static void AddStat(Dictionary<string, ItemStat> bucket, string tpl, double share, string place)
+    {
+        if (!bucket.TryGetValue(tpl, out var stat))
+        {
+            stat = new ItemStat();
+            bucket[tpl] = stat;
+        }
+
+        stat.Share += share;
+        stat.Pools++;
+        stat.Places.Add(place);
+    }
+
     private sealed class PoolIndex
     {
-        // parent category -> container tpl -> maps where that container holds items of the category
         public Dictionary<string, Dictionary<string, HashSet<string>>> StaticContainers { get; } = [];
-        // parent category -> item tpl -> summed share of the pools it appears in (used to rank examples)
-        public Dictionary<string, Dictionary<string, double>> StaticItems { get; } = [];
-        public Dictionary<string, Dictionary<string, int>> LooseSpots { get; } = [];
-        public Dictionary<string, Dictionary<string, double>> LooseItems { get; } = [];
+        // Summed share of the pools each item appears in, used to rank the examples
+        public Dictionary<string, Dictionary<string, ItemStat>> StaticItems { get; } = [];
+        public Dictionary<string, Dictionary<string, HashSet<int>>> LooseSpots { get; } = [];
+        public Dictionary<string, Dictionary<string, ItemStat>> LooseItems { get; } = [];
         public Dictionary<string, (double Mean, int Points)> LooseStats { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, HashSet<string>> MapContainers { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> LooseSpotCount { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private Task<PoolIndex>? _poolIndex;
@@ -728,12 +776,28 @@ public class LootInjectionService(
                         continue;
                     }
 
+                    if (!index.MapContainers.TryGetValue(mapId, out var mapContainers))
+                    {
+                        mapContainers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        index.MapContainers[mapId] = mapContainers;
+                    }
+
+                    mapContainers.Add(containerId.ToString());
+
                     foreach (var dist in pool)
                     {
-                        string parent = ParentOf(dist.Tpl);
-                        Bucket(index.StaticContainers, parent).TryAdd(containerId.ToString(), []);
-                        index.StaticContainers[parent][containerId.ToString()].Add(mapId);
-                        Add(Bucket(index.StaticItems, parent), dist.Tpl.ToString(), (dist.RelativeProbability ?? 0) / total);
+                        foreach (string category in AncestorsOf(dist.Tpl))
+                        {
+                            var containers = Bucket(index.StaticContainers, category);
+                            if (!containers.TryGetValue(containerId.ToString(), out var maps))
+                            {
+                                maps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                                containers[containerId.ToString()] = maps;
+                            }
+
+                            maps.Add(mapId);
+                            AddStat(Bucket(index.StaticItems, category), dist.Tpl.ToString(), (dist.RelativeProbability ?? 0) / total, containerId.ToString());
+                        }
                     }
                 }
 
@@ -741,12 +805,15 @@ public class LootInjectionService(
                 var allSpawnpoints = looseLoot?.Spawnpoints?.ToList() ?? [];
                 index.LooseStats[mapId] = (looseLoot?.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(allSpawnpoints));
 
-                foreach (var sp in allSpawnpoints)
+                for (int spIndex = 0; spIndex < allSpawnpoints.Count; spIndex++)
                 {
+                    var sp = allSpawnpoints[spIndex];
                     if (sp.Template?.Items is null || sp.ItemDistribution is null || sp.Template.IsAlwaysSpawn == true)
                     {
                         continue;
                     }
+
+                    index.LooseSpotCount[mapId] = index.LooseSpotCount.GetValueOrDefault(mapId) + 1;
 
                     var weights = sp.ItemDistribution
                         .Where(d => d.ComposedKey?.Key is not null)
@@ -755,19 +822,24 @@ public class LootInjectionService(
                     double total = weights.Values.Sum();
                     var roots = sp.Template.Items.Where(i => i.ComposedKey is not null).ToList();
 
-                    foreach (string parent in roots.Select(i => ParentOf(i.Template)).Distinct())
-                    {
-                        Add(Bucket(index.LooseSpots, parent), mapId, 1);
-                    }
-
-                    if (total <= 0)
-                    {
-                        continue;
-                    }
-
                     foreach (var root in roots)
                     {
-                        Add(Bucket(index.LooseItems, ParentOf(root.Template)), root.Template.ToString(), weights.GetValueOrDefault(root.ComposedKey!) / total);
+                        foreach (string category in AncestorsOf(root.Template))
+                        {
+                            var spots = Bucket(index.LooseSpots, category);
+                            if (!spots.TryGetValue(mapId, out var set))
+                            {
+                                set = [];
+                                spots[mapId] = set;
+                            }
+
+                            set.Add(spIndex);
+
+                            if (total > 0)
+                            {
+                                AddStat(Bucket(index.LooseItems, category), root.Template.ToString(), weights.GetValueOrDefault(root.ComposedKey!) / total, $"{mapId}:{spIndex}");
+                            }
+                        }
                     }
                 }
             }
@@ -784,7 +856,7 @@ public class LootInjectionService(
     {
         if (!source.TryGetValue(key, out var bucket))
         {
-            bucket = [];
+            bucket = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
             source[key] = bucket;
         }
 
@@ -793,10 +865,34 @@ public class LootInjectionService(
 
     private static void Add(Dictionary<string, double> bucket, string key, double value) => bucket[key] = bucket.GetValueOrDefault(key) + value;
 
-    private static void Add(Dictionary<string, int> bucket, string key, int value) => bucket[key] = bucket.GetValueOrDefault(key) + value;
+    public List<PoolCategory>? GetPoolCategories()
+    {
+        if (!PoolIndexReady)
+        {
+            return null;
+        }
 
-    /// <summary>Returns null while the index is still being built</summary>
-    public SimilarPool? GetSimilarPool(LootEntry entry, bool loose, int sampleSize = 10)
+        var index = _poolIndex!.Result;
+        return index.StaticItems.Keys
+            .Union(index.LooseItems.Keys, StringComparer.OrdinalIgnoreCase)
+            .Select(id => new PoolCategory(
+                id,
+                catalog.CategoryName(id),
+                CategoryPath(id),
+                (index.StaticItems.GetValueOrDefault(id)?.Keys ?? Enumerable.Empty<string>())
+                    .Union(index.LooseItems.GetValueOrDefault(id)?.Keys ?? Enumerable.Empty<string>())
+                    .Count()))
+            .OrderBy(c => c.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private string CategoryPath(string id)
+    {
+        var chain = AncestorsOf(new MongoId(id)).Reverse().Select(catalog.CategoryName).Append(catalog.CategoryName(id));
+        return string.Join(" > ", chain);
+    }
+
+    public SimilarPool? GetSimilarPool(LootEntry entry, bool loose)
     {
         if (!PoolIndexReady || catalog.Get(entry.Tpl) is not { } item)
         {
@@ -805,24 +901,51 @@ public class LootInjectionService(
 
         var index = _poolIndex!.Result;
         bool MapAllowed(string map) => entry.Maps.Count == 0 || entry.Maps.Contains(map, StringComparer.OrdinalIgnoreCase);
+        var targets = loose
+            ? TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item)
+            : TargetCategories(entry.Static.Mode, entry.Static.Categories, item);
 
-        var itemWeights = (loose ? index.LooseItems : index.StaticItems).GetValueOrDefault(item.ParentId) ?? [];
-        var others = itemWeights
-            .Where(kv => !kv.Key.Equals(item.Id, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(kv => kv.Value)
-            .Select(kv => catalog.Get(kv.Key))
-            .OfType<CatalogItem>()
+        // A parent and a child category can both be selected, the same item's stats are only counted once
+        var stats = new Dictionary<string, ItemStat>(StringComparer.OrdinalIgnoreCase);
+        foreach (var category in targets)
+        {
+            foreach (var (tpl, stat) in (loose ? index.LooseItems : index.StaticItems).GetValueOrDefault(category) ?? [])
+            {
+                stats.TryAdd(tpl, stat);
+            }
+        }
+
+        var others = stats
+            .Where(kv => !kv.Key.Equals(item.Id, StringComparison.OrdinalIgnoreCase) && kv.Value.Pools > 0)
+            .OrderByDescending(kv => kv.Value.Share)
+            .Select(kv => catalog.Get(kv.Key) is { } other
+                ? new PoolItem(other, kv.Value.Share / kv.Value.Pools * 100, kv.Value.Places.Count)
+                : null)
+            .OfType<PoolItem>()
             .ToList();
 
         var containers = new List<string>();
         int spots = 0;
         if (loose)
         {
-            spots = (index.LooseSpots.GetValueOrDefault(item.ParentId) ?? []).Where(kv => MapAllowed(kv.Key)).Sum(kv => kv.Value);
+            foreach (var map in _maps.Keys.Where(MapAllowed))
+            {
+                var union = new HashSet<int>();
+                foreach (var category in targets)
+                {
+                    if (index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(map) is { } set)
+                    {
+                        union.UnionWith(set);
+                    }
+                }
+
+                spots += union.Count;
+            }
         }
         else
         {
-            containers = (index.StaticContainers.GetValueOrDefault(item.ParentId) ?? [])
+            containers = targets
+                .SelectMany(category => index.StaticContainers.GetValueOrDefault(category) ?? [])
                 .Where(kv => kv.Value.Any(MapAllowed) && Fits(new MongoId(kv.Key), item))
                 .Select(kv => catalog.NameOf(kv.Key))
                 .Distinct()
@@ -830,6 +953,7 @@ public class LootInjectionService(
                 .ToList();
         }
 
-        return new SimilarPool(item.ParentName, others.Take(sampleSize).ToList(), others.Count, containers, spots);
+        string categoryName = string.Join(", ", targets.Select(catalog.CategoryName).OrderBy(n => n));
+        return new SimilarPool(categoryName, others, containers, spots);
     }
 }

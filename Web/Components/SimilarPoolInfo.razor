@@ -12,22 +12,33 @@
             <span class="clp-similar-cat">@Pool.CategoryName</span>
         </div>
 
-        @if (Pool.SampleItems.Count > 0)
+        @if (Pool.Items.Count > 0)
         {
             <div class="clp-similar-row clp-similar-items">
                 <span class="clp-similar-label">@T("Já spawnam ali", "Already spawning there")</span>
                 <div class="clp-similar-icons">
-                    @foreach (var item in Pool.SampleItems)
+                    @foreach (var p in itemsExpanded ? Pool.Items : Pool.Items.Take(CollapsedItems))
                     {
-                        <MudTooltip Text="@item.Name">
-                            <img src="@item.IconUrl" alt="@item.Name" loading="lazy" onerror="this.style.visibility='hidden'" />
+                        <MudTooltip>
+                            <TooltipContent>
+                                <div class="clp-item-tip">
+                                    <strong>@p.Item.Name</strong>
+                                    <span>@ItemChance(p)</span>
+                                </div>
+                            </TooltipContent>
+                            <ChildContent>
+                                <img src="@p.Item.IconUrl" alt="@p.Item.Name" loading="lazy" onerror="this.style.visibility='hidden'" />
+                            </ChildContent>
                         </MudTooltip>
                     }
-                    @if (Pool.TotalItems > Pool.SampleItems.Count)
+                    @if (Pool.Items.Count > CollapsedItems)
                     {
-                        <span class="clp-similar-more">+@(Pool.TotalItems - Pool.SampleItems.Count)</span>
+                        <button class="clp-similar-more" @onclick="() => itemsExpanded = !itemsExpanded">
+                            @(itemsExpanded ? T("menos", "less") : $"+{Pool.Items.Count - CollapsedItems}")
+                        </button>
                     }
                 </div>
+                <span class="clp-help">@T("Passe o mouse num item para ver a chance dele.", "Hover an item to see its chance.")</span>
             </div>
         }
 
@@ -79,7 +90,17 @@
     [Parameter] public bool Pt { get; set; }
 
     private const int CollapsedCount = 6;
+    private const int CollapsedItems = 10;
     private bool expanded;
+    private bool itemsExpanded;
+
+    private string ItemChance(PoolItem p)
+    {
+        string pct = p.AveragePercent < 1 ? p.AveragePercent.ToString("0.##") : p.AveragePercent.ToString("0.#");
+        return Loose
+            ? T($"~{pct}% quando o ponto spawna, em {p.Places} pontos de loot", $"~{pct}% when the spot spawns, in {p.Places} loot spots")
+            : T($"~{pct}% por sorteio, em {p.Places} tipos de contêiner", $"~{pct}% per roll, in {p.Places} container types");
+    }
 
     private string T(string pt, string en) => Pt ? pt : en;
 }

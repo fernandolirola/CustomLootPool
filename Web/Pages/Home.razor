@@ -53,28 +53,40 @@
                             @(LotsOfLoot ? T("Lots of Loot detectado", "Lots of Loot detected") : T("Multiplicadores de loot alterados", "Loot multipliers changed"))
                         </MudText>
                         <MudText Typo="Typo.body2" Class="spt-muted">
-                            @T("Ele não muda a chance de cada sorteio, mas faz cada mapa sortear bem mais itens. Por isso a mesma % rende mais itens por raid do que no SPT original.",
-                               "It doesn't change the chance of each roll, but each map rolls many more items. So the same % gives more items per raid than in vanilla SPT.")
+                            @T($"{ModLabel} não muda as suas chances. O que muda é quantos itens cada mapa sorteia, comparado ao jogo original: contêineres {MultRange(multipliers.Select(m => m.Static))}, loot no chão {MultRange(multipliers.Select(m => m.Loose))}. Como o seu item entra nesses sorteios, a quantidade dele muda junto.",
+                               $"{ModLabel} doesn't change your chances. It changes how many items each map rolls compared to vanilla: containers {MultRange(multipliers.Select(m => m.Static))}, floor loot {MultRange(multipliers.Select(m => m.Loose))}. Since your item is part of those rolls, its amount changes too.")
                         </MudText>
                     </div>
-                    <MudSwitch T="bool" Value="@working.CompensateLootMultipliers" ValueChanged="@(v => { working.CompensateLootMultipliers = v; sims.Clear(); })"
-                               Color="Color.Warning" Label="@T("Compensar", "Compensate")" Class="clp-lol-switch" />
                 </div>
-                <MudText Typo="Typo.body2" Class="clp-lol-mode">
-                    @if (working.CompensateLootMultipliers)
-                    {
-                        @T("Ligado: a % que você define vale como no SPT original. O mod divide a chance pelo multiplicador de cada mapa.",
-                           "On: the % you set behaves like vanilla SPT. The mod divides the chance by each map's multiplier.")
-                    }
-                    else
-                    {
-                        @T("Desligado: a % é aplicada como está, e você recebe mais itens por raid.",
-                           "Off: the % is applied as is, and you get more items per raid.")
-                    }
-                </MudText>
-                <button class="clp-similar-toggle clp-lol-details" @onclick="() => showMultipliers = !showMultipliers">
-                    @(showMultipliers ? T("Esconder multiplicadores", "Hide multipliers") : T("Ver multiplicadores por mapa", "Show multipliers per map"))
-                </button>
+
+                <MudText Typo="Typo.subtitle2" Class="clp-lol-question">@T("Como os seus itens devem se comportar?", "How should your items behave?")</MudText>
+                <div class="clp-lol-options" role="radiogroup">
+                    <button role="radio" aria-checked="@(!working.CompensateLootMultipliers)" class="@($"clp-lol-option {(working.CompensateLootMultipliers ? "" : "clp-lol-option-on")}")"
+                            @onclick="() => SetCompensate(false)">
+                        <span class="clp-lol-radio"></span>
+                        <span class="clp-lol-option-copy">
+                            <strong>@T("Crescer junto com o Lots of Loot", "Grow with Lots of Loot")</strong>
+                            <span>@T("O item fica mais comum, como todo o resto do loot. A % que você digita é usada do jeito que está.",
+                                     "Your item becomes more common, like the rest of the loot. The % you type is used as is.")</span>
+                        </span>
+                    </button>
+                    <button role="radio" aria-checked="@working.CompensateLootMultipliers" class="@($"clp-lol-option {(working.CompensateLootMultipliers ? "clp-lol-option-on" : "")}")"
+                            @onclick="() => SetCompensate(true)">
+                        <span class="clp-lol-radio"></span>
+                        <span class="clp-lol-option-copy">
+                            <strong>@T("Manter a quantidade do jogo original", "Keep the vanilla amount")</strong>
+                            <span>@T("Você acha mais ou menos a mesma quantidade que acharia sem o Lots of Loot. O mod baixa a % em cada mapa para compensar os sorteios extras.",
+                                     "You find about as many as you would without Lots of Loot. The mod lowers the % on each map to make up for the extra rolls.")</span>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="clp-lol-footer">
+                    <button class="clp-similar-toggle clp-lol-details" @onclick="() => showMultipliers = !showMultipliers">
+                        @(showMultipliers ? T("Esconder multiplicadores por mapa", "Hide multipliers per map") : T("Ver multiplicadores por mapa", "Show multipliers per map"))
+                    </button>
+                    <span class="spt-muted">@T("Dica: use \"Simular raids\" para ver a quantidade real por raid.", "Tip: use \"Simulate raids\" to see the real amount per raid.")</span>
+                </div>
                 @if (showMultipliers)
                 {
                     <div class="clp-lol-grid">
@@ -82,7 +94,7 @@
                         {
                             <div class="clp-lol-chip">
                                 <strong>@m.MapName</strong>
-                                <span>@T("contêiner", "container") ×@m.Static.ToString("0.##") · @T("chão", "loose") ×@m.Loose.ToString("0.##")</span>
+                                <span>@T("contêineres", "containers") ×@m.Static.ToString("0.##") · @T("chão", "floor") ×@m.Loose.ToString("0.##")</span>
                             </div>
                         }
                     </div>
@@ -165,7 +177,7 @@
                             }
                             else
                             {
-                                <span class="clp-warn">@T("ID não existe no banco de dados do servidor — este item será ignorado.", "This ID does not exist in the server database — the item will be ignored.")</span>
+                                <span class="clp-warn">@T("ID não existe no banco de dados do servidor. Este item será ignorado.", "This ID does not exist in the server database. The item will be ignored.")</span>
                             }
                             <button class="clp-id" title="@T("Copiar ID", "Copy ID")" @onclick="() => CopyId(e.Tpl)">
                                 <span class="spt-mono">@e.Tpl</span>
@@ -221,13 +233,18 @@
                                 <MudSpacer />
                                 <MudSwitch T="bool" Value="@e.Static.Enabled" ValueChanged="@(v => e.Static.Enabled = v)" Color="Color.Warning" Size="Size.Small" />
                             </div>
-                            <MudSelect T="TargetMode" Label="@T("Onde", "Where")" Value="@e.Static.Mode" ValueChanged="@(v => e.Static.Mode = v)"
+                            <MudSelect T="TargetMode" @key="@($"smode-{IsPt}")" Label="@T("Onde", "Where")" Value="@e.Static.Mode" ValueChanged="@(v => SetStaticMode(e, item, v))" ToStringFunc="@(m => ModeLabel(m, loose: false))"
                                        Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!e.Static.Enabled)">
                                 <MudSelectItem T="TargetMode" Value="TargetMode.Similar">@T("Contêineres com itens parecidos", "Containers with similar items")</MudSelectItem>
+                                <MudSelectItem T="TargetMode" Value="TargetMode.Categories">@T("Escolher lootpools", "Pick loot pools")</MudSelectItem>
                                 <MudSelectItem T="TargetMode" Value="TargetMode.All">@T("Todos os contêineres", "All containers")</MudSelectItem>
                                 <MudSelectItem T="TargetMode" Value="TargetMode.Selected">@T("Escolher contêineres", "Pick containers")</MudSelectItem>
                             </MudSelect>
-                            @if (e.Static.Enabled && e.Static.Mode == TargetMode.Similar)
+                            @if (e.Static.Mode == TargetMode.Categories)
+                            {
+                                <CategoryPicker Value="@e.Static.Categories" ValueChanged="@(v => e.Static.Categories = v)" Disabled="@(!e.Static.Enabled)" Pt="@IsPt" />
+                            }
+                            @if (e.Static.Enabled && e.Static.Mode is TargetMode.Similar or TargetMode.Categories)
                             {
                                 <SimilarPoolInfo Pool="@Injection.GetSimilarPool(e, loose: false)" Loose="false" Pt="@IsPt" />
                             }
@@ -255,12 +272,17 @@
                                 <MudSpacer />
                                 <MudSwitch T="bool" Value="@e.Loose.Enabled" ValueChanged="@(v => e.Loose.Enabled = v)" Color="Color.Warning" Size="Size.Small" />
                             </div>
-                            <MudSelect T="TargetMode" Label="@T("Onde", "Where")" Value="@e.Loose.Mode" ValueChanged="@(v => e.Loose.Mode = v)"
+                            <MudSelect T="TargetMode" @key="@($"lmode-{IsPt}")" Label="@T("Onde", "Where")" Value="@e.Loose.Mode" ValueChanged="@(v => SetLooseMode(e, item, v))" ToStringFunc="@(m => ModeLabel(m, loose: true))"
                                        Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!e.Loose.Enabled)">
                                 <MudSelectItem T="TargetMode" Value="TargetMode.Similar">@T("Pontos que já soltam itens parecidos", "Spots that already spawn similar items")</MudSelectItem>
+                                <MudSelectItem T="TargetMode" Value="TargetMode.Categories">@T("Escolher lootpools", "Pick loot pools")</MudSelectItem>
                                 <MudSelectItem T="TargetMode" Value="TargetMode.All">@T("Todos os pontos de loot", "All loot spots")</MudSelectItem>
                             </MudSelect>
-                            @if (e.Loose.Enabled && e.Loose.Mode == TargetMode.Similar)
+                            @if (e.Loose.Mode == TargetMode.Categories)
+                            {
+                                <CategoryPicker Value="@e.Loose.Categories" ValueChanged="@(v => e.Loose.Categories = v)" Disabled="@(!e.Loose.Enabled)" Pt="@IsPt" />
+                            }
+                            @if (e.Loose.Enabled && e.Loose.Mode is TargetMode.Similar or TargetMode.Categories)
                             {
                                 <SimilarPoolInfo Pool="@Injection.GetSimilarPool(e, loose: true)" Loose="true" Pt="@IsPt" />
                             }
@@ -292,7 +314,7 @@
                             <div class="clp-sim">
                                 <div class="clp-sim-head">
                                     <strong>@T("Média por raid", "Average per raid")</strong>
-                                    <span>@T($"({simResult.FirstOrDefault()?.Raids ?? 0} raids simulados por mapa, com a configuração atual desta tela — mesmo sem salvar)", $"({simResult.FirstOrDefault()?.Raids ?? 0} simulated raids per map, using the settings on this page — even if unsaved)")</span>
+                                    <span>@T($"({simResult.FirstOrDefault()?.Raids ?? 0} raids simulados por mapa, com a configuração atual desta tela, mesmo sem salvar)", $"({simResult.FirstOrDefault()?.Raids ?? 0} simulated raids per map, using the settings on this page, even if unsaved)")</span>
                                 </div>
                                 <div class="clp-sim-grid">
                                     @foreach (var r in simResult.Where(x => x.Error is not null))
@@ -371,7 +393,7 @@
     {
         if (firstRender)
         {
-            Containers = await Task.Run(Injection.AllContainers);
+            Containers = await Injection.AllContainers();
             StateHasChanged();
             if (!Injection.PoolIndexReady)
             {
@@ -428,31 +450,77 @@
         }
 
         double chance = loose ? entry.Loose.ChancePercent : entry.Static.ChancePercent;
-        string mod = LotsOfLoot ? "Lots of Loot" : T("os multiplicadores atuais", "the current multipliers");
 
         if (working.CompensateLootMultipliers)
         {
-            var range = Range(ratios.Select(r => Math.Min(chance / r, 90)));
-            return T($"Aplicado com {mod}: {range} por sorteio, conforme o mapa.", $"Applied with {mod}: {range} per roll, depending on the map.");
+            var applied = PercentRange(ratios.Select(r => Math.Min(chance / r, 90)));
+            return T($"Para compensar {ModLabel}, o mod usa {applied} por sorteio, conforme o mapa.",
+                     $"To make up for {ModLabel}, the mod uses {applied} per roll, depending on the map.");
         }
-        else
-        {
-            var range = Range(ratios.Select(r => chance * r));
-            return T($"Com {mod}, rende como ~{range} no SPT original.", $"With {mod}, this yields like ~{range} in vanilla SPT.");
-        }
+
+        return T($"Com {ModLabel}, você acha {MultRange(ratios)} a quantidade que essa % daria no jogo original.",
+                 $"With {ModLabel}, you'll find {MultRange(ratios)} as many as this % gives in vanilla.");
     }
 
-    private static string Range(IEnumerable<double> values)
+    private string ModLabel => LotsOfLoot ? "Lots of Loot" : T("os multiplicadores atuais", "the current multipliers");
+
+    private void SetCompensate(bool value)
+    {
+        working.CompensateLootMultipliers = value;
+        sims.Clear();
+    }
+
+    private string MultRange(IEnumerable<double> values)
+    {
+        var list = values.Where(v => v > 0).ToList();
+        if (list.Count == 0)
+        {
+            return "×1";
+        }
+
+        string Fmt(double v) => "×" + v.ToString(v < 10 ? "0.#" : "0");
+        double min = list.Min(), max = list.Max();
+        return Fmt(min) == Fmt(max) ? Fmt(min) : $"{Fmt(min)} {T("a", "to")} {Fmt(max)}";
+    }
+
+    private string PercentRange(IEnumerable<double> values)
     {
         var list = values.ToList();
-        string Fmt(double v) => v < 1 ? v.ToString("0.###") : v.ToString("0.#");
+        string Fmt(double v) => (v < 1 ? v.ToString("0.###") : v.ToString("0.#")) + "%";
         double min = list.Min(), max = list.Max();
-        return Fmt(min) == Fmt(max) ? $"{Fmt(min)}%" : $"{Fmt(min)}–{Fmt(max)}%";
+        return Fmt(min) == Fmt(max) ? Fmt(min) : $"{Fmt(min)} {T("a", "to")} {Fmt(max)}";
     }
 
     private string T(string pt, string en) => IsPt ? pt : en;
 
     private string MapName(string id) => ItemCatalogService.MapName(id, IsPt);
+
+    private string ModeLabel(TargetMode mode, bool loose) => mode switch
+    {
+        TargetMode.Similar => loose ? T("Pontos que já soltam itens parecidos", "Spots that already spawn similar items") : T("Contêineres com itens parecidos", "Containers with similar items"),
+        TargetMode.Categories => T("Escolher lootpools", "Pick loot pools"),
+        TargetMode.All => loose ? T("Todos os pontos de loot", "All loot spots") : T("Todos os contêineres", "All containers"),
+        TargetMode.Selected => T("Escolher contêineres", "Pick containers"),
+        _ => mode.ToString(),
+    };
+
+    private static void SetStaticMode(LootEntry entry, CatalogItem? item, TargetMode mode)
+    {
+        entry.Static.Mode = mode;
+        if (mode == TargetMode.Categories && entry.Static.Categories.Count == 0 && item is not null)
+        {
+            entry.Static.Categories = [item.ParentId];
+        }
+    }
+
+    private static void SetLooseMode(LootEntry entry, CatalogItem? item, TargetMode mode)
+    {
+        entry.Loose.Mode = mode;
+        if (mode == TargetMode.Categories && entry.Loose.Categories.Count == 0 && item is not null)
+        {
+            entry.Loose.Categories = [item.ParentId];
+        }
+    }
 
     private void SetLanguage(string language)
     {
@@ -533,7 +601,7 @@
         StateHasChanged();
         try
         {
-            previews[entry] = await Task.Run(() => Injection.Preview(entry));
+            previews[entry] = await Injection.Preview(entry);
         }
         catch (Exception ex)
         {

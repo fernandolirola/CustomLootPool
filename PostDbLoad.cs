@@ -23,6 +23,9 @@ public class LateLoad(ConfigService configService, ItemCatalogService catalog, L
         catalog.Build();
         injection.Register();
         configService.ConfigChanged += injection.InvalidateCaches;
+
+        // Reading every map's loot makes other loot mods log each read, so do it once while the server boots
+        _ = injection.EnsurePoolIndex();
         return Task.CompletedTask;
     }
 }

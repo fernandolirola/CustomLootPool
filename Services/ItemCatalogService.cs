@@ -18,6 +18,7 @@ public sealed class ItemCatalogService(TemplateTable templateTable, LocaleServic
 {
     private Dictionary<string, CatalogItem> _items = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, string> _englishNames = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _categoryNames = new(StringComparer.OrdinalIgnoreCase);
 
     public static readonly IReadOnlyDictionary<string, string> MapNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -82,6 +83,12 @@ public sealed class ItemCatalogService(TemplateTable templateTable, LocaleServic
         }
 
         _items = items;
+        _categoryNames = templateTable.Items
+            .Where(kv => !string.Equals(kv.Value.Type, "Item", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                kv => kv.Key.ToString(),
+                kv => locale.GetValueOrDefault($"{kv.Key} Name") ?? SplitCamel(kv.Value.Name ?? kv.Key.ToString()),
+                StringComparer.OrdinalIgnoreCase);
         _englishNames = englishNames;
     }
 
@@ -105,6 +112,14 @@ public sealed class ItemCatalogService(TemplateTable templateTable, LocaleServic
     }
 
     public string NameOf(string id) => Get(id)?.Name ?? id;
+
+    public string CategoryName(string id) => _categoryNames.GetValueOrDefault(id) ?? Get(id)?.Name ?? id;
+
+    private static string SplitCamel(string name)
+    {
+        var spaced = System.Text.RegularExpressions.Regex.Replace(name.Replace('_', ' '), "(?<=[a-z])(?=[A-Z])", " ");
+        return spaced.Length > 0 ? char.ToUpperInvariant(spaced[0]) + spaced[1..] : spaced;
+    }
 
     public bool Exists(string id) => _items.ContainsKey(id);
 

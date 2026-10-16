@@ -566,3 +566,91 @@
 }
 
 .clp-warning .mud-icon-root { flex: none; margin-top: 1px; }
+
+.clp-cat-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+
+.clp-cat-count {
+    color: var(--spt-text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.clp-lol-question { margin-top: 2px; }
+
+.clp-lol-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 760px) {
+    .clp-lol-options { grid-template-columns: 1fr; }
+}
+
+.clp-lol-option {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: var(--spt-radius);
+    border: 1px solid var(--spt-border);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--spt-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.clp-lol-option:hover { border-color: var(--spt-border-strong); }
+
+.clp-lol-option-on {
+    border-color: rgba(250, 204, 21, 0.6);
+    background: var(--clp-yellow-soft);
+}
+
+.clp-lol-radio {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    border-radius: 50%;
+    border: 2px solid var(--spt-border-strong);
+}
+
+.clp-lol-option-on .clp-lol-radio {
+    border-color: var(--spt-accent);
+    background: radial-gradient(circle, var(--spt-accent) 0 4px, transparent 5px);
+}
+
+.clp-lol-option-copy { display: grid; gap: 4px; }
+.clp-lol-option-copy span { color: var(--spt-text-muted); font-size: 0.82rem; }
+
+.clp-lol-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+button.clp-similar-more {
+    border: 1px solid var(--spt-border);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    color: var(--spt-info);
+    font: inherit;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+
+button.clp-similar-more:hover { border-color: var(--spt-border-strong); }
+
+.clp-item-tip { display: grid; gap: 2px; text-align: left; }
+.clp-item-tip span { font-size: 0.75rem; opacity: 0.85; }

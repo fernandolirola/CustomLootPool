@@ -1,0 +1,38 @@
+@namespace CustomLootPool.Web.Components
+@inject LootInjectionService Injection
+
+@if (Injection.GetPoolCategories() is not { } categories)
+{
+    <span class="clp-similar-loading"><MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Warning" /> @T("Lendo os lootpools...", "Reading loot pools...")</span>
+}
+else
+{
+    <MudSelect T="string" @key="@($"cats-{Pt}")"
+               Label="@T("Lootpools", "Loot pools")"
+               MultiSelection="true"
+               SelectedValues="@Value"
+               SelectedValuesChanged="@(v => ValueChanged.InvokeAsync(v.ToList()))"
+               MultiSelectionTextFunc="@(list => list.Count == 0 ? T("Nenhum escolhido", "None selected") : string.Join(", ", list.Select(id => categories.FirstOrDefault(c => c.Id == id)?.Name ?? id)))"
+               HelperText="@T("O item entra onde já spawnam itens dessas categorias.", "The item goes where items of these categories already spawn.")"
+               Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@Disabled" Class="mt-2"
+               MaxHeight="360">
+        @foreach (var c in categories)
+        {
+            <MudSelectItem T="string" Value="@c.Id">
+                <span class="clp-cat-option">
+                    <span>@c.Path</span>
+                    <span class="clp-cat-count">@c.ItemCount @T("itens", "items")</span>
+                </span>
+            </MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public List<string> Value { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Pt { get; set; }
+
+    private string T(string pt, string en) => Pt ? pt : en;
+}

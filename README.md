@@ -8,9 +8,10 @@ Server mod for **SPT 4.1** that lets you add any item to the map loot pools, bot
 
 - Search any item by name or ID, with item images.
 - Choose maps, where it spawns (containers / loose loot) and the chance.
-- **Similar items** mode: the item only goes where items of the same category already spawn. The page shows the loot pool, example items and the containers it reaches.
+- **Similar items** mode: the item only goes where items of the same category already spawn. The page shows the loot pool, example items (hover one to see its chance) and the containers it reaches.
+- **Pick loot pools**: choose any categories (Electronics, Keys, Jewelry, the whole Barter items group...) and the item joins the pools where those items spawn.
 - **Simulate raids**: runs SPT's real loot generator and shows the average amount per raid on each map, even before saving.
-- **Lots of Loot aware**: detects changed loot multipliers and can compensate so the amount per raid stays close to vanilla.
+- **Lots of Loot aware**: shows how much each map's loot is multiplied and lets you choose: let your items grow with Lots of Loot, or keep the vanilla amount.
 - Changes apply from the next raid, no server restart needed.
 - English and Portuguese UI.
 
@@ -68,9 +69,10 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 
 - Busca de itens por nome ou ID, com imagem.
 - Escolha de mapas, onde aparece (contêineres / loot solto) e a chance.
-- Modo **itens parecidos**: o item só entra onde já spawnam itens da mesma categoria. A página mostra o lootpool, itens de exemplo e os contêineres alcançados.
+- Modo **itens parecidos**: o item só entra onde já spawnam itens da mesma categoria. A página mostra o lootpool, itens de exemplo (passe o mouse para ver a chance) e os contêineres alcançados.
+- **Escolher lootpools**: escolha qualquer categoria (Eletrônicos, Chaves, Joias, o grupo inteiro de itens de troca...) e o item entra nos pools onde esses itens spawnam.
 - **Simular raids**: roda o gerador de loot real do SPT e mostra a média por raid em cada mapa, mesmo antes de salvar.
-- **Compatível com Lots of Loot**: detecta multiplicadores de loot alterados e pode compensar para a quantidade por raid ficar perto do SPT original.
+- **Compatível com Lots of Loot**: mostra quanto o loot de cada mapa é multiplicado e deixa você escolher: seus itens crescem junto com o Lots of Loot ou mantêm a quantidade do jogo original.
 - As mudanças valem a partir do próximo raid, sem reiniciar o servidor.
 - Interface em inglês e português.
 

@@ -89,7 +89,6 @@ public class ConfigService(ModHelper modHelper, ISptLogger<ConfigService> logger
         ConfigChanged?.Invoke();
     }
 
-    /// <summary>Deep copy so the UI can edit freely without touching the live config</summary>
     public LootPoolConfig CloneConfig() => CloneConfigOf(Config);
 
     public LootPoolConfig CloneConfigOf(LootPoolConfig source)
