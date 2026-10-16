@@ -16,7 +16,7 @@ Server mod for **SPT 4.1** that lets you add any item to the map loot pools, bot
 
 ## Install
 
-Download the release zip and extract it into your SPT folder so you end up with `SPT/user/mods/CustomLootPool`.
+Download the release zip and extract it into your game folder (the one that contains `SPT_Runtime`), so you end up with `SPT_Runtime/user/mods/CustomLootPool`.
 
 ## Usage
 
@@ -48,7 +48,7 @@ Requires the .NET 10 SDK.
 dotnet build -c Release
 ```
 
-Copy `CustomLootPool.dll`, `config.json` and the `wwwroot` folder from `bin/Release/net10.0/` into `SPT/user/mods/CustomLootPool/`.
+Copy `CustomLootPool.dll`, `config.json` and the `wwwroot` folder from `bin/Release/net10.0/` into `SPT_Runtime/user/mods/CustomLootPool/`.
 
 ## Credits
 
@@ -76,7 +76,7 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 
 ### Instalação
 
-Baixe o zip da release e extraia na pasta do SPT, ficando `SPT/user/mods/CustomLootPool`.
+Baixe o zip da release e extraia na pasta do jogo (a que contém `SPT_Runtime`), ficando `SPT_Runtime/user/mods/CustomLootPool`.
 
 ### Uso
 
