@@ -242,7 +242,7 @@
                             </MudSelect>
                             @if (e.Static.Mode == TargetMode.Categories)
                             {
-                                <CategoryPicker Value="@e.Static.Categories" ValueChanged="@(v => e.Static.Categories = v)" Disabled="@(!e.Static.Enabled)" Pt="@IsPt" />
+                                <CategoryPicker ItemTpl="@e.Tpl" Value="@e.Static.Categories" ValueChanged="@(v => e.Static.Categories = v)" Disabled="@(!e.Static.Enabled)" Pt="@IsPt" />
                             }
                             @if (e.Static.Enabled && e.Static.Mode is TargetMode.Similar or TargetMode.Categories)
                             {
@@ -280,7 +280,7 @@
                             </MudSelect>
                             @if (e.Loose.Mode == TargetMode.Categories)
                             {
-                                <CategoryPicker Value="@e.Loose.Categories" ValueChanged="@(v => e.Loose.Categories = v)" Disabled="@(!e.Loose.Enabled)" Pt="@IsPt" />
+                                <CategoryPicker ItemTpl="@e.Tpl" Value="@e.Loose.Categories" ValueChanged="@(v => e.Loose.Categories = v)" Disabled="@(!e.Loose.Enabled)" Pt="@IsPt" />
                             }
                             @if (e.Loose.Enabled && e.Loose.Mode is TargetMode.Similar or TargetMode.Categories)
                             {

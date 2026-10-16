@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Collections.Concurrent;
 using CustomLootPool.Models;
 using SPTarkov.DI.Annotations;
@@ -16,6 +17,7 @@ using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Services.Server;
 using SPTarkov.Server.Core.Services.Items;
 using SPTarkov.Server.Core.Utils.Cloners;
+using SPTarkov.Server.Core.Utils.Json;
 
 namespace CustomLootPool.Services;
 
@@ -151,8 +153,8 @@ public class LootInjectionService(
             var cfg = configService.Config;
             var logKey = $"{mapId}:{kind}";
 
-            // The transformer runs every time SPT reads the loot, only log once per config revision
-            if (summary.Count > 0 && (cfg.Debug || _loggedRevision.GetValueOrDefault(logKey) != configService.Revision))
+            // Other mods (e.g. quest or loot browsers) read every map, so the per-map summary is debug only
+            if (summary.Count > 0 && cfg.Debug && _loggedRevision.GetValueOrDefault(logKey) != configService.Revision)
             {
                 _loggedRevision[logKey] = configService.Revision;
                 logger.Info($"{ConfigService.LogPrefix} {MapName(mapId)} ({kind}): {string.Join(", ", summary)}");
@@ -767,7 +769,7 @@ public class LootInjectionService(
         {
             foreach ((string mapId, Location location) in _maps)
             {
-                foreach ((MongoId containerId, StaticLootDetails details) in location.StaticLoot?.Value ?? [])
+                foreach ((MongoId containerId, StaticLootDetails details) in RawValue(location.StaticLoot) ?? [])
                 {
                     var pool = details?.ItemDistribution?.ToList() ?? [];
                     double total = pool.Sum(d => (double)(d.RelativeProbability ?? 0));
@@ -801,7 +803,7 @@ public class LootInjectionService(
                     }
                 }
 
-                var looseLoot = location.LooseLoot?.Value;
+                var looseLoot = RawValue(location.LooseLoot);
                 var allSpawnpoints = looseLoot?.Spawnpoints?.ToList() ?? [];
                 index.LooseStats[mapId] = (looseLoot?.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(allSpawnpoints));
 
@@ -850,6 +852,43 @@ public class LootInjectionService(
         }
 
         return index;
+    }
+
+    /// <summary>
+    /// Builds the value with only SPT's own transformers, so mods that log on every read (Lots of Loot) stay quiet
+    /// </summary>
+    private static T? RawValue<T>(LazyLoad<T>? lazy) where T : class
+    {
+        if (lazy is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var fields = typeof(LazyLoad<T>).GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            var deserialize = fields.FirstOrDefault(f => f.FieldType == typeof(Func<T>))?.GetValue(lazy) as Func<T>;
+            var transformers = fields.FirstOrDefault(f => f.FieldType == typeof(List<Func<T?, T?>>))?.GetValue(lazy) as List<Func<T?, T?>>;
+            if (deserialize is not null && transformers is not null)
+            {
+                var spt = typeof(LazyLoad<T>).Assembly;
+                T? value = deserialize();
+                foreach (var transformer in transformers.ToList())
+                {
+                    if (transformer.Method.DeclaringType?.Assembly == spt)
+                    {
+                        value = transformer(value);
+                    }
+                }
+
+                return value;
+            }
+        }
+        catch
+        {
+        }
+
+        return lazy.Value;
     }
 
     private static Dictionary<string, T> Bucket<T>(Dictionary<string, Dictionary<string, T>> source, string key)
