@@ -1,5 +1,10 @@
 # Changes
 
+## 1.2.2
+
+- Include the default config.json in the release ZIP for new installations. Keep existing configuration files when upgrading.
+- Include all 1.2.1 probability, configuration and simulation fixes.
+
 ## 1.2.1
 
 - Build with SPTushonka 4.1.6 packages, target SPT ~4.1.6 and align runtime metadata with Forge naming requirements.

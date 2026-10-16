@@ -24,8 +24,8 @@ Server mod for **SPT 4.1.6+ (4.1.x)** that lets you add any item to the map loot
 
 Download the release zip and extract it into your game folder (the one that contains `SPT_Runtime`), so you end up with `SPT_Runtime/user/mods/CustomLootPool`.
 
-Starting with 1.2.1, the release ZIP omits `config.json` so an update preserves your
-existing settings. A new installation creates its default config on first start.
+The release ZIP includes a default `config.json` for new installations. When updating,
+keep your existing `config.json` instead of overwriting it with the default.
 
 ## Usage
 
@@ -86,7 +86,7 @@ without starting the game or loading player profiles:
 dotnet test Tests/CustomLootPool.Tests.csproj -c Release -p:SPTPath=C:\SPT
 ```
 
-See [CHANGELOG.md](CHANGELOG.md) for the 1.2.1 fixes.
+See [CHANGELOG.md](CHANGELOG.md) for the latest fixes.
 
 ## Credits
 
@@ -122,8 +122,8 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 
 Baixe o zip da release e extraia na pasta do jogo (a que contém `SPT_Runtime`), ficando `SPT_Runtime/user/mods/CustomLootPool`.
 
-A partir da versão 1.2.1, o ZIP não inclui `config.json`: atualizar preserva suas
-configurações. Na primeira instalação, o arquivo é criado ao iniciar o servidor.
+O ZIP inclui um `config.json` padrão para novas instalações. Ao atualizar, mantenha
+seu `config.json` existente em vez de substituí-lo pelo padrão.
 
 As chances são calculadas juntas por pool. Ao atingir ou ultrapassar 100%, os
 itens configurados dividem todo o pool proporcionalmente. Se não houver outros
@@ -149,7 +149,3 @@ Clique no preset **Evento dos Smugglers**, ou adicione **Locked case** (`6740987
 - Sealed box + Multitool → Workbench → Opened box (6 itens aleatórios)
 
 Os dois crafts já são liberados pelo próprio SPT.
-
-## Validation for 1.2.1
-
-Built with .NET SDK 10.0.402 and SPTushonka 4.1.6 packages. All 26 regression tests pass against SPT 4.1.6 assemblies. A clean, isolated SPT 4.1.6 server loads the mod, registers hooks on 13 maps and serves the configuration page and CSS. No existing profiles were used. In-game raids and Fika sessions have not been verified for this release.
