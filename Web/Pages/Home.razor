@@ -1,0 +1,572 @@
+@page "/customlootpool"
+@attribute [Authorize(Policy = "Administrator")]
+@layout BaseMudBlazorLayout
+@implements IDisposable
+@inject ConfigService ConfigService
+@inject ItemCatalogService Catalog
+@inject LootInjectionService Injection
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Custom Loot Pool</PageTitle>
+
+<HeadContent>
+    <link href="/CustomLootPool/css/customlootpool.css" rel="stylesheet" />
+</HeadContent>
+
+<div class="clp-page spt-page">
+    <MudContainer MaxWidth="MaxWidth.False" Class="clp-container pa-6">
+
+        <MudPaper Elevation="0" Class="clp-hero spt-panel pa-5">
+            <div class="clp-hero-copy">
+                <MudText Typo="Typo.overline" Class="spt-kicker">Loot pool</MudText>
+                <MudText Typo="Typo.h3" Class="spt-title">Custom Loot Pool</MudText>
+                <MudText Typo="Typo.body2" Class="spt-subtitle mt-1">
+                    @T("Escolha qualquer item do jogo e coloque ele para spawnar nos contêineres e no chão dos mapas. As mudanças valem a partir do próximo raid, sem reiniciar o servidor.",
+                       "Pick any item in the game and make it spawn in containers and as loose loot on the maps. Changes apply from the next raid, no server restart needed.")
+                </MudText>
+            </div>
+            <div class="clp-hero-actions">
+                <div class="clp-lang" role="group" aria-label="Language">
+                    <button class="@(IsPt ? "" : "clp-lang-on")" @onclick="@(() => SetLanguage("en"))" title="English">EN</button>
+                    <button class="@(IsPt ? "clp-lang-on" : "")" @onclick="@(() => SetLanguage("pt"))" title="Português">PT</button>
+                </div>
+                <MudSwitch T="bool" Value="@working.Enabled" ValueChanged="@(v => { working.Enabled = v; })" Color="Color.Warning" Label="@(working.Enabled ? T("Mod ativo", "Mod enabled") : T("Mod desligado", "Mod disabled"))" />
+                <div class="clp-save-row">
+                    @if (IsDirty)
+                    {
+                        <span class="clp-dirty"><MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" /> @T("Alterações não salvas", "Unsaved changes")</span>
+                        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Discard">@T("Descartar", "Discard")</MudButton>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Disabled="@(!IsDirty)" StartIcon="@Icons.Material.Filled.Save" OnClick="Save">@T("Salvar", "Save")</MudButton>
+                </div>
+            </div>
+        </MudPaper>
+
+        @if (Injection.MultipliersChanged() && Injection.GetMultipliers() is { } multipliers)
+        {
+            <MudPaper Elevation="0" Class="clp-lol spt-panel pa-5">
+                <div class="clp-lol-head">
+                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Class="clp-accent-icon" />
+                    <div class="clp-lol-copy">
+                        <MudText Typo="Typo.h6">
+                            @(LotsOfLoot ? T("Lots of Loot detectado", "Lots of Loot detected") : T("Multiplicadores de loot alterados", "Loot multipliers changed"))
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="spt-muted">
+                            @T("Ele não muda a chance de cada sorteio, mas faz cada mapa sortear bem mais itens. Por isso a mesma % rende mais itens por raid do que no SPT original.",
+                               "It doesn't change the chance of each roll, but each map rolls many more items. So the same % gives more items per raid than in vanilla SPT.")
+                        </MudText>
+                    </div>
+                    <MudSwitch T="bool" Value="@working.CompensateLootMultipliers" ValueChanged="@(v => { working.CompensateLootMultipliers = v; sims.Clear(); })"
+                               Color="Color.Warning" Label="@T("Compensar", "Compensate")" Class="clp-lol-switch" />
+                </div>
+                <MudText Typo="Typo.body2" Class="clp-lol-mode">
+                    @if (working.CompensateLootMultipliers)
+                    {
+                        @T("Ligado: a % que você define vale como no SPT original. O mod divide a chance pelo multiplicador de cada mapa.",
+                           "On: the % you set behaves like vanilla SPT. The mod divides the chance by each map's multiplier.")
+                    }
+                    else
+                    {
+                        @T("Desligado: a % é aplicada como está, e você recebe mais itens por raid.",
+                           "Off: the % is applied as is, and you get more items per raid.")
+                    }
+                </MudText>
+                <button class="clp-similar-toggle clp-lol-details" @onclick="() => showMultipliers = !showMultipliers">
+                    @(showMultipliers ? T("Esconder multiplicadores", "Hide multipliers") : T("Ver multiplicadores por mapa", "Show multipliers per map"))
+                </button>
+                @if (showMultipliers)
+                {
+                    <div class="clp-lol-grid">
+                        @foreach (var m in multipliers)
+                        {
+                            <div class="clp-lol-chip">
+                                <strong>@m.MapName</strong>
+                                <span>@T("contêiner", "container") ×@m.Static.ToString("0.##") · @T("chão", "loose") ×@m.Loose.ToString("0.##")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </MudPaper>
+        }
+
+        <MudPaper Elevation="0" Class="clp-add spt-panel pa-5">
+            <div class="clp-section-head">
+                <MudIcon Icon="@Icons.Material.Filled.AddCircle" Class="clp-accent-icon" />
+                <div>
+                    <MudText Typo="Typo.h6">@T("Adicionar item", "Add item")</MudText>
+                    <MudText Typo="Typo.body2" Class="spt-muted">@T("Cole o ID do item (ex.: ", "Paste the item ID (e.g. ")<span class="spt-mono">6740987b89d5e1ddc603f4f0</span>@T(") ou digite o nome.", ") or type its name.")</MudText>
+                </div>
+            </div>
+            <MudAutocomplete T="CatalogItem"
+                             @ref="search"
+                             Value="@selected"
+                             ValueChanged="@OnItemPicked"
+                             SearchFunc="@SearchItems"
+                             ToStringFunc="@(i => i is null ? string.Empty : i.Name)"
+                             Placeholder="@T("Buscar por nome ou ID...", "Search by name or ID...")"
+                             Variant="Variant.Outlined"
+                             AdornmentIcon="@Icons.Material.Filled.Search"
+                             DebounceInterval="250"
+                             MinCharacters="2"
+                             MaxItems="40"
+                             ResetValueOnEmptyText="true"
+                             Class="clp-search">
+                <ItemTemplate Context="item">
+                    <div class="clp-option">
+                        <img class="clp-option-img" src="@item.IconUrl" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+                        <div class="clp-option-copy">
+                            <span class="clp-option-name">@item.Name @if (!string.IsNullOrEmpty(item.ShortName)) { <em>(@item.ShortName)</em> }</span>
+                            <span class="clp-option-meta">@item.ParentName · <span class="spt-mono">@item.Id</span></span>
+                        </div>
+                        @if (working.Entries.Any(e => e.Tpl.Equals(item.Id, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@T("já na lista", "already added")</MudChip>
+                        }
+                    </div>
+                </ItemTemplate>
+                <NoItemsTemplate>
+                    <MudText Class="pa-3 spt-muted">@T("Nenhum item encontrado.", "No items found.")</MudText>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+        </MudPaper>
+
+        @if (working.Entries.Count == 0)
+        {
+            <MudPaper Elevation="0" Class="spt-panel pa-6 clp-empty">
+                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" />
+                <MudText>@T("Nenhum item configurado ainda. Use a busca acima para começar.", "No items configured yet. Use the search above to get started.")</MudText>
+            </MudPaper>
+        }
+
+        <div class="clp-grid">
+            @foreach (var entry in working.Entries)
+            {
+                var item = Catalog.Get(entry.Tpl);
+                var e = entry;
+                <MudPaper Elevation="0" Class="@($"clp-card spt-panel {(e.Enabled ? "" : "clp-card-off")}")" @key="e">
+                    <div class="clp-card-head">
+                        <div class="clp-img-box">
+                            @if (item is not null)
+                            {
+                                <img src="@item.ImageUrl" alt="@item.Name" loading="lazy"
+                                     onerror="this.onerror=null;this.src='https://assets.tarkov.dev/@(item.Id)-icon.webp'" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Large" />
+                            }
+                        </div>
+                        <div class="clp-card-title">
+                            <MudText Typo="Typo.h6" Class="clp-item-name">@(item?.Name ?? e.Name ?? T("Item desconhecido", "Unknown item"))</MudText>
+                            @if (item is not null)
+                            {
+                                <span class="clp-meta">@item.ParentName · @(item.Width)x@(item.Height)</span>
+                            }
+                            else
+                            {
+                                <span class="clp-warn">@T("ID não existe no banco de dados do servidor — este item será ignorado.", "This ID does not exist in the server database — the item will be ignored.")</span>
+                            }
+                            <button class="clp-id" title="@T("Copiar ID", "Copy ID")" @onclick="() => CopyId(e.Tpl)">
+                                <span class="spt-mono">@e.Tpl</span>
+                                <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" />
+                            </button>
+                        </div>
+                        <div class="clp-card-tools">
+                            <MudSwitch T="bool" Value="@e.Enabled" ValueChanged="@(v => e.Enabled = v)" Color="Color.Warning" />
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Title="@T("Remover", "Remove")" OnClick="() => Remove(e)" />
+                        </div>
+                    </div>
+
+                    <div class="clp-field">
+                        <MudSelect T="string"
+                                   @key="@($"maps-{IsPt}")"
+                                   Label="@T("Mapas", "Maps")"
+                                   MultiSelection="true"
+                                   SelectedValues="@e.Maps"
+                                   SelectedValuesChanged="@(v => e.Maps = v.ToList())"
+                                   MultiSelectionTextFunc="@(list => list.Count == 0 ? T("Todos os mapas", "All maps") : string.Join(", ", list.Select(MapName)))"
+                                   Placeholder="@T("Todos os mapas", "All maps")"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Clearable="true"
+                                   HelperText="@T("Vazio = todos os mapas", "Empty = all maps")">
+                            @foreach (var map in Injection.Maps.Keys.OrderBy(MapName))
+                            {
+                                <MudSelectItem T="string" Value="@map">@MapName(map)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+
+                    <div class="clp-split">
+                        <section class="@($"clp-block {(e.Static.Enabled ? "" : "clp-block-off")}")">
+                            <div class="clp-block-head">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory" />
+                                <span>@T("Contêineres", "Containers")</span>
+                                <MudSpacer />
+                                <MudSwitch T="bool" Value="@e.Static.Enabled" ValueChanged="@(v => e.Static.Enabled = v)" Color="Color.Warning" Size="Size.Small" />
+                            </div>
+                            <MudSelect T="TargetMode" Label="@T("Onde", "Where")" Value="@e.Static.Mode" ValueChanged="@(v => e.Static.Mode = v)"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!e.Static.Enabled)">
+                                <MudSelectItem T="TargetMode" Value="TargetMode.Similar">@T("Contêineres com itens parecidos", "Containers with similar items")</MudSelectItem>
+                                <MudSelectItem T="TargetMode" Value="TargetMode.All">@T("Todos os contêineres", "All containers")</MudSelectItem>
+                                <MudSelectItem T="TargetMode" Value="TargetMode.Selected">@T("Escolher contêineres", "Pick containers")</MudSelectItem>
+                            </MudSelect>
+                            @if (e.Static.Enabled && e.Static.Mode == TargetMode.Similar)
+                            {
+                                <SimilarPoolInfo Pool="@Injection.GetSimilarPool(e, loose: false)" Loose="false" Pt="@IsPt" />
+                            }
+                            @if (e.Static.Mode == TargetMode.Selected)
+                            {
+                                <MudSelect T="string" @key="@($"containers-{IsPt}")" Label="@T("Contêineres", "Containers")" MultiSelection="true" Class="mt-2"
+                                           SelectedValues="@e.Static.Containers"
+                                           SelectedValuesChanged="@(v => e.Static.Containers = v.ToList())"
+                                           MultiSelectionTextFunc="@(list => list.Count == 0 ? T("Nenhum", "None") : T($"{list.Count} selecionado(s)", $"{list.Count} selected"))"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!e.Static.Enabled)">
+                                    @foreach (var c in Containers)
+                                    {
+                                        <MudSelectItem T="string" Value="@c.Id">@c.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            <ChanceInput Value="@e.Static.ChancePercent" ValueChanged="@(v => e.Static.ChancePercent = v)" Disabled="@(!e.Static.Enabled)" Note="@ChanceNote(e, loose: false)"
+                                         Help="@T("Chance de cada item sorteado dentro do contêiner ser este.", "Chance that each item rolled inside the container is this one.")" />
+                        </section>
+
+                        <section class="@($"clp-block {(e.Loose.Enabled ? "" : "clp-block-off")}")">
+                            <div class="clp-block-head">
+                                <MudIcon Icon="@Icons.Material.Filled.Place" />
+                                <span title="@T("Itens soltos no chão e em prateleiras", "Items lying on the floor and on shelves")">@T("Loot solto", "Loose loot")</span>
+                                <MudSpacer />
+                                <MudSwitch T="bool" Value="@e.Loose.Enabled" ValueChanged="@(v => e.Loose.Enabled = v)" Color="Color.Warning" Size="Size.Small" />
+                            </div>
+                            <MudSelect T="TargetMode" Label="@T("Onde", "Where")" Value="@e.Loose.Mode" ValueChanged="@(v => e.Loose.Mode = v)"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!e.Loose.Enabled)">
+                                <MudSelectItem T="TargetMode" Value="TargetMode.Similar">@T("Pontos que já soltam itens parecidos", "Spots that already spawn similar items")</MudSelectItem>
+                                <MudSelectItem T="TargetMode" Value="TargetMode.All">@T("Todos os pontos de loot", "All loot spots")</MudSelectItem>
+                            </MudSelect>
+                            @if (e.Loose.Enabled && e.Loose.Mode == TargetMode.Similar)
+                            {
+                                <SimilarPoolInfo Pool="@Injection.GetSimilarPool(e, loose: true)" Loose="true" Pt="@IsPt" />
+                            }
+                            <ChanceInput Value="@e.Loose.ChancePercent" ValueChanged="@(v => e.Loose.ChancePercent = v)" Disabled="@(!e.Loose.Enabled)" Note="@ChanceNote(e, loose: true)"
+                                         Help="@T("Itens no chão/prateleiras: quando um desses pontos spawna, chance de ser este item.", "Floor/shelf items: when one of these spots spawns, chance it is this item.")" />
+                        </section>
+                    </div>
+
+                    <div class="clp-reach">
+                        <div class="clp-reach-buttons">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" StartIcon="@Icons.Material.Filled.TravelExplore"
+                                       Disabled="@(item is null || busy.ContainsKey(e))" OnClick="() => LoadPreview(e)">
+                                @T("Ver onde vai aparecer", "Show where it spawns")
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Casino"
+                                       Disabled="@(item is null || busy.ContainsKey(e) || (!e.Static.Enabled && !e.Loose.Enabled))" OnClick="() => RunSimulation(e)">
+                                @T("Simular raids", "Simulate raids")
+                            </MudButton>
+                            @if (busy.TryGetValue(e, out var status))
+                            {
+                                <span class="clp-busy"><MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Warning" /> @status</span>
+                            }
+                        </div>
+
+                        @if (sims.TryGetValue(e, out var simResult))
+                        {
+                            var okResults = simResult.Where(x => x.Error is null).ToList();
+                            var totalAvg = okResults.Count == 0 ? 0 : okResults.Average(r => r.StaticPerRaid + r.LoosePerRaid);
+                            <div class="clp-sim">
+                                <div class="clp-sim-head">
+                                    <strong>@T("Média por raid", "Average per raid")</strong>
+                                    <span>@T($"({simResult.FirstOrDefault()?.Raids ?? 0} raids simulados por mapa, com a configuração atual desta tela — mesmo sem salvar)", $"({simResult.FirstOrDefault()?.Raids ?? 0} simulated raids per map, using the settings on this page — even if unsaved)")</span>
+                                </div>
+                                <div class="clp-sim-grid">
+                                    @foreach (var r in simResult.Where(x => x.Error is not null))
+                                    {
+                                        <div class="clp-sim-row clp-sim-error">
+                                            <span class="clp-sim-map">@r.MapName</span>
+                                            <span class="clp-sim-errtext" title="@r.Error">
+                                                @T("Não deu para simular este mapa (outro mod de loot falhou nele). O item continua sendo adicionado normalmente.",
+                                                   "Could not simulate this map (another loot mod failed on it). The item is still added normally.")
+                                            </span>
+                                        </div>
+                                    }
+                                    @foreach (var r in simResult.Where(x => x.Error is null))
+                                    {
+                                        var total = r.StaticPerRaid + r.LoosePerRaid;
+                                        <div class="clp-sim-row">
+                                            <span class="clp-sim-map">@r.MapName</span>
+                                            <div class="clp-sim-bar"><div style="width:@(BarWidth(total, simResult))%"></div></div>
+                                            <span class="clp-sim-num">@total.ToString("0.0#")</span>
+                                            <span class="clp-sim-split">@r.StaticPerRaid.ToString("0.0#") @T("contêiner", "container") · @r.LoosePerRaid.ToString("0.0#") @T("chão", "loose")</span>
+                                        </div>
+                                    }
+                                </div>
+                                <span class="clp-help">@T($"Média geral: {totalAvg:0.0#} por raid. É aleatório: cada raid pode variar bastante.", $"Overall average: {totalAvg:0.0#} per raid. It is random: individual raids can vary a lot.")</span>
+                            </div>
+                        }
+
+                        @if (previews.TryGetValue(e, out var reach))
+                        {
+                            <div class="clp-reach-list">
+                                @foreach (var r in reach)
+                                {
+                                    var empty = r.ContainerTypes == 0 && r.Spawnpoints == 0;
+                                    <MudTooltip Text="@(r.ContainerNames.Count == 0 ? T("Nenhum contêiner", "No containers") : string.Join(", ", r.ContainerNames))">
+                                        <div class="@($"clp-reach-chip {(empty ? "clp-reach-empty" : "")}")">
+                                            <strong>@r.MapName</strong>
+                                            <span>@r.ContainerTypes @T("tipos de contêiner", "container types") · @r.Spawnpoints @T("pontos", "spots")</span>
+                                        </div>
+                                    </MudTooltip>
+                                }
+                            </div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        </div>
+
+        <MudText Typo="Typo.caption" Class="spt-muted clp-footnote">
+            @T("Imagens dos itens: assets.tarkov.dev. \"Itens parecidos\" = mesma categoria do item.",
+               "Item images: assets.tarkov.dev. \"Similar items\" = same category as the item.")
+        </MudText>
+    </MudContainer>
+</div>
+
+@code {
+    private LootPoolConfig working = new();
+    private string savedJson = string.Empty;
+    private CatalogItem? selected;
+    private MudAutocomplete<CatalogItem>? search;
+    private readonly Dictionary<LootEntry, List<MapReach>> previews = [];
+    private readonly Dictionary<LootEntry, string> busy = [];
+    private readonly Dictionary<LootEntry, List<SimResult>> sims = [];
+    private const int SimRaids = 4;
+    private List<(string Id, string Name)> Containers = [];
+
+    private bool IsDirty => Serialize(working) != savedJson;
+
+    protected override void OnInitialized()
+    {
+        Reload();
+        ConfigService.ConfigChanged += OnExternalChange;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Containers = await Task.Run(Injection.AllContainers);
+            StateHasChanged();
+            if (!Injection.PoolIndexReady)
+            {
+                await Injection.EnsurePoolIndex();
+                StateHasChanged();
+            }
+        }
+    }
+
+    public void Dispose() => ConfigService.ConfigChanged -= OnExternalChange;
+
+    private void OnExternalChange() => InvokeAsync(StateHasChanged);
+
+    private void Reload()
+    {
+        working = ConfigService.CloneConfig();
+        savedJson = Serialize(working);
+        previews.Clear();
+        sims.Clear();
+    }
+
+    // Language is saved on its own, so it never counts as an unsaved change
+    private static string Serialize(LootPoolConfig cfg)
+    {
+        var language = cfg.Language;
+        cfg.Language = string.Empty;
+        var json = System.Text.Json.JsonSerializer.Serialize(cfg);
+        cfg.Language = language;
+        return json;
+    }
+
+    private bool IsPt => ConfigService.IsPortuguese;
+
+    private bool showMultipliers;
+
+    private static bool LotsOfLoot => LootInjectionService.LotsOfLootInstalled;
+
+    private string? ChanceNote(LootEntry entry, bool loose)
+    {
+        var settingsEnabled = loose ? entry.Loose.Enabled : entry.Static.Enabled;
+        if (!settingsEnabled || !Injection.MultipliersChanged() || Injection.GetMultipliers() is not { } all)
+        {
+            return null;
+        }
+
+        var ratios = all
+            .Where(m => entry.Maps.Count == 0 || entry.Maps.Contains(m.MapId, StringComparer.OrdinalIgnoreCase))
+            .Select(m => loose ? m.Loose : m.Static)
+            .Where(r => r > 0)
+            .ToList();
+        if (ratios.Count == 0)
+        {
+            return null;
+        }
+
+        double chance = loose ? entry.Loose.ChancePercent : entry.Static.ChancePercent;
+        string mod = LotsOfLoot ? "Lots of Loot" : T("os multiplicadores atuais", "the current multipliers");
+
+        if (working.CompensateLootMultipliers)
+        {
+            var range = Range(ratios.Select(r => Math.Min(chance / r, 90)));
+            return T($"Aplicado com {mod}: {range} por sorteio, conforme o mapa.", $"Applied with {mod}: {range} per roll, depending on the map.");
+        }
+        else
+        {
+            var range = Range(ratios.Select(r => chance * r));
+            return T($"Com {mod}, rende como ~{range} no SPT original.", $"With {mod}, this yields like ~{range} in vanilla SPT.");
+        }
+    }
+
+    private static string Range(IEnumerable<double> values)
+    {
+        var list = values.ToList();
+        string Fmt(double v) => v < 1 ? v.ToString("0.###") : v.ToString("0.#");
+        double min = list.Min(), max = list.Max();
+        return Fmt(min) == Fmt(max) ? $"{Fmt(min)}%" : $"{Fmt(min)}–{Fmt(max)}%";
+    }
+
+    private string T(string pt, string en) => IsPt ? pt : en;
+
+    private string MapName(string id) => ItemCatalogService.MapName(id, IsPt);
+
+    private void SetLanguage(string language)
+    {
+        ConfigService.SetLanguage(language);
+        working.Language = language;
+        // Old previews / simulations hold map names in the previous language
+        previews.Clear();
+        sims.Clear();
+    }
+
+    private Task<IEnumerable<CatalogItem>> SearchItems(string? text, CancellationToken token)
+    {
+        return Task.FromResult(Catalog.Search(text));
+    }
+
+    private async Task OnItemPicked(CatalogItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var existing = working.Entries.FirstOrDefault(e => e.Tpl.Equals(item.Id, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            Snackbar.Add(T($"{item.Name} já está na lista.", $"{item.Name} is already in the list."), Severity.Info);
+        }
+        else
+        {
+            working.Entries.Insert(0, new LootEntry { Tpl = item.Id, Name = item.Name });
+            Snackbar.Add(T($"{item.Name} adicionado. Não esqueça de salvar.", $"{item.Name} added. Don't forget to save."), Severity.Success);
+        }
+
+        selected = null;
+        if (search is not null)
+        {
+            await search.ClearAsync();
+        }
+    }
+
+    private void Remove(LootEntry entry)
+    {
+        working.Entries.Remove(entry);
+        previews.Remove(entry);
+        sims.Remove(entry);
+    }
+
+    private void Discard()
+    {
+        Reload();
+        Snackbar.Add(T("Alterações descartadas.", "Changes discarded."), Severity.Normal);
+    }
+
+    private void Save()
+    {
+        try
+        {
+            foreach (var entry in working.Entries)
+            {
+                entry.Name = Catalog.Get(entry.Tpl)?.Name ?? entry.Name;
+                entry.Static.ChancePercent = Math.Clamp(entry.Static.ChancePercent, 0, 90);
+                entry.Loose.ChancePercent = Math.Clamp(entry.Loose.ChancePercent, 0, 90);
+            }
+
+            ConfigService.Save(ConfigService.CloneConfigOf(working));
+            savedJson = Serialize(working);
+            Snackbar.Add(T("Salvo! Vale a partir do próximo raid.", "Saved! Applies from the next raid."), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(T("Erro ao salvar: ", "Failed to save: ") + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task LoadPreview(LootEntry entry)
+    {
+        busy[entry] = T("Analisando mapas...", "Checking maps...");
+        StateHasChanged();
+        try
+        {
+            previews[entry] = await Task.Run(() => Injection.Preview(entry));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(T("Não foi possível calcular: ", "Could not calculate: ") + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            busy.Remove(entry);
+        }
+    }
+
+    private async Task RunSimulation(LootEntry entry)
+    {
+        busy[entry] = T("Preparando simulação...", "Preparing simulation...");
+        StateHasChanged();
+        try
+        {
+            sims[entry] = await Injection.Simulate(entry, SimRaids, working.CompensateLootMultipliers, map =>
+            {
+                busy[entry] = T($"Simulando {map}...", $"Simulating {map}...");
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(T("Erro na simulação: ", "Simulation failed: ") + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            busy.Remove(entry);
+        }
+    }
+
+    private static double BarWidth(double value, List<SimResult> all)
+    {
+        var max = all.Where(r => r.Error is null).Select(r => r.StaticPerRaid + r.LoosePerRaid).DefaultIfEmpty(0).Max();
+        return max <= 0 ? 0 : Math.Max(2, value / max * 100);
+    }
+
+    private async Task CopyId(string id)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", id);
+            Snackbar.Add(T("ID copiado.", "ID copied."), Severity.Normal);
+        }
+        catch
+        {
+            // clipboard can be blocked on plain http, nothing to do
+        }
+    }
+}

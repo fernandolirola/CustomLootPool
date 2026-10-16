@@ -1,0 +1,78 @@
+@namespace CustomLootPool.Web.Components
+
+<div class="clp-similar">
+    @if (Pool is null)
+    {
+        <span class="clp-similar-loading"><MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Warning" /> @T("Lendo os lootpools...", "Reading loot pools...")</span>
+    }
+    else
+    {
+        <div class="clp-similar-row">
+            <span class="clp-similar-label">@T("Lootpool", "Loot pool")</span>
+            <span class="clp-similar-cat">@Pool.CategoryName</span>
+        </div>
+
+        @if (Pool.SampleItems.Count > 0)
+        {
+            <div class="clp-similar-row clp-similar-items">
+                <span class="clp-similar-label">@T("Já spawnam ali", "Already spawning there")</span>
+                <div class="clp-similar-icons">
+                    @foreach (var item in Pool.SampleItems)
+                    {
+                        <MudTooltip Text="@item.Name">
+                            <img src="@item.IconUrl" alt="@item.Name" loading="lazy" onerror="this.style.visibility='hidden'" />
+                        </MudTooltip>
+                    }
+                    @if (Pool.TotalItems > Pool.SampleItems.Count)
+                    {
+                        <span class="clp-similar-more">+@(Pool.TotalItems - Pool.SampleItems.Count)</span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (Loose)
+        {
+            <div class="clp-similar-row">
+                <span class="clp-similar-label">@T("Pontos de spawn", "Spawn spots")</span>
+                <span>@Pool.Spots.ToString("N0")</span>
+            </div>
+        }
+        else
+        {
+            <div class="clp-similar-row clp-similar-containers">
+                <span class="clp-similar-label">@T($"Contêineres ({Pool.Containers.Count})", $"Containers ({Pool.Containers.Count})")</span>
+                @if (Pool.Containers.Count == 0)
+                {
+                    <span class="clp-warn">@T("Nenhum contêiner compatível nos mapas escolhidos.", "No matching containers on the selected maps.")</span>
+                }
+                else
+                {
+                    <div class="clp-similar-chips">
+                        @foreach (var name in expanded ? Pool.Containers : Pool.Containers.Take(CollapsedCount))
+                        {
+                            <span class="clp-similar-chip" title="@name">@name</span>
+                        }
+                        @if (Pool.Containers.Count > CollapsedCount)
+                        {
+                            <button class="clp-similar-toggle" @onclick="() => expanded = !expanded">
+                                @(expanded ? T("menos", "less") : T($"+{Pool.Containers.Count - CollapsedCount} mais", $"+{Pool.Containers.Count - CollapsedCount} more"))
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public SimilarPool? Pool { get; set; }
+    [Parameter] public bool Loose { get; set; }
+    [Parameter] public bool Pt { get; set; }
+
+    private const int CollapsedCount = 6;
+    private bool expanded;
+
+    private string T(string pt, string en) => Pt ? pt : en;
+}
