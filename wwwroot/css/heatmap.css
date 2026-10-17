@@ -160,3 +160,26 @@
     .clp-atlas-map { height: 50vh; min-height: 340px; }
     .clp-atlas-toolbar, .clp-atlas-footer { flex-wrap: wrap; }
 }
+
+.clp-atlas-box rect {
+    fill: #f5b83d;
+    stroke: #1a1307;
+    stroke-width: .8;
+}
+.clp-atlas-box text {
+    fill: #1a1307;
+    font-weight: 700;
+    pointer-events: none;
+}
+.clp-atlas-box:hover rect { fill: #ffe08a; }
+.clp-atlas-footer { flex-wrap: wrap; gap: 8px 20px; }
+.clp-atlas-key { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.clp-atlas-key span { display: inline-flex; align-items: center; gap: 6px; }
+.clp-atlas-key-box {
+    width: 10px; height: 10px; border-radius: 2px;
+    background: #f5b83d; border: 1px solid #1a1307;
+}
+.clp-atlas-key-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #94efb3; border: 1px solid var(--spt-bg);
+}

@@ -37,7 +37,8 @@
                 <div class="clp-atlas-toggles">
                     <MudCheckBox T="bool" @bind-Value="containers" @bind-Value:after="Rebuild" Label="Containers" Color="Color.Warning" Size="Size.Small" Dense="true" />
                     <MudCheckBox T="bool" @bind-Value="loose" @bind-Value:after="Rebuild" Label="Loose loot" Color="Color.Warning" Size="Size.Small" Dense="true" />
-                    <MudCheckBox T="bool" @bind-Value="showPoints" Label="Individual locations" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                    <MudCheckBox T="bool" @bind-Value="showPoints" Label="Loose loot spots" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                    <MudCheckBox T="bool" @bind-Value="showHeat" Label="Loose loot density" Color="Color.Warning" Size="Size.Small" Dense="true" />
                     <MudCheckBox T="bool" @bind-Value="showLabels" Label="Landmark labels" Color="Color.Warning" Size="Size.Small" Dense="true" />
                 </div>
                 <div class="clp-atlas-stat">
@@ -52,7 +53,7 @@
                 @foreach (var cell in ranked.Take(4))
                 {
                     <div class="clp-atlas-rank">
-                        <span>@AreaName(cell.X, cell.Z)<small class="spt-muted spt-mono">X @Math.Round(cell.X) · Z @Math.Round(cell.Z)</small></span>
+                        <span>@AreaName(cell.X, cell.Z)<small class="spt-muted">@Breakdown(cell)</small></span>
                         <b class="spt-accent">@N(cell.Weight / Divisor)</b>
                     </div>
                 }
@@ -90,7 +91,7 @@
                             </defs>
                             <rect width="1000" height="@N(projection.Height)" fill="var(--spt-bg-soft)" />
                             <image href="@image" width="1000" height="@N(projection.Height)" preserveAspectRatio="none" opacity=".8" />
-                            @foreach (var cell in cells)
+                            @foreach (var cell in showHeat ? cells : [])
                             {
                                 var p = projection.Project(cell.X, cell.Z);
                                 <circle cx="@N(p.X)" cy="@N(p.Y)" r="@N(projection.Radius(48))" fill="@($"url(#{uid}-heat)")" opacity="@N(.25 + .75 * cell.Weight / maxCell)">
@@ -99,13 +100,26 @@
                             }
                             @if (showPoints)
                             {
-                                @foreach (var point in visible)
+                                @foreach (var point in visible.Where(v => v.Source != "container"))
                                 {
                                     var p = projection.Project(point.X, point.Z);
-                                    <circle cx="@N(p.X)" cy="@N(p.Y)" r="2.2" fill="@(point.Source == "container" ? "var(--spt-info)" : "#94efb3")" stroke="var(--spt-bg)" stroke-width=".7">
+                                    <circle cx="@N(p.X)" cy="@N(p.Y)" r="2" fill="#94efb3" stroke="var(--spt-bg)" stroke-width=".6">
                                         <title>@point.Name · @N(point.Weight / Divisor) @(sampled ? "items / raid" : "location") · X @N(point.X), Y @N(point.Y), Z @N(point.Z)</title>
                                     </circle>
                                 }
+                            }
+                            @foreach (var marker in markers)
+                            {
+                                var p = projection.Project(marker.X, marker.Z);
+                                double size = sampled ? 5 + 5 * Math.Sqrt(marker.Weight / maxMarker) : marker.Count > 1 ? 7.5 : 5.5;
+                                <g class="clp-atlas-box" transform="@($"translate({N(p.X)} {N(p.Y)})")">
+                                    <rect x="@N(-size / 2)" y="@N(-size / 2)" width="@N(size)" height="@N(size)" rx="1.2" />
+                                    @if (marker.Count > 1)
+                                    {
+                                        @((MarkupString)$"<text y=\"{N(size * .32)}\" text-anchor=\"middle\" font-size=\"{N(size * .9)}\">{marker.Count}</text>")
+                                    }
+                                    <title>@marker.Label@(sampled ? $" · {N(marker.Weight / Divisor)} items / raid" : "")</title>
+                                </g>
                             }
                             @if (showLabels && Artwork is { } labelMap)
                             {
@@ -142,8 +156,11 @@
                     }
                 </div>
                 <footer class="clp-atlas-footer">
-                    <div class="clp-atlas-legend"><span>Lower</span><i></i><span>Higher</span></div>
-                    <span>Relative density within this view</span>
+                    <div class="clp-atlas-key">
+                        <span><b class="clp-atlas-key-box"></b>Container@(sampled ? " (bigger = more items)" : "")</span>
+                        <span><b class="clp-atlas-key-dot"></b>Loose loot spot</span>
+                    </div>
+                    <div class="clp-atlas-legend"><span>Loose loot density</span><span>Lower</span><i></i><span>Higher</span></div>
                 </footer>
                 <MudText Typo="Typo.caption" Class="spt-muted clp-atlas-disclosure">
                     Artwork: @(Artwork?.Author ?? "Tarkov.dev contributors") via <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer">Tarkov.dev SVG Maps</a>, <a href="/CustomLootPool/maps/LICENSE-CC-BY-NC-SA-4.0.md" target="_blank">CC BY-NC-SA 4.0</a>. Floor views were extracted.
@@ -167,7 +184,10 @@
     private bool attach;
     private string mapId = "", floorName = "", status = "Loading locations…";
     private string? error, image;
-    private bool busy, sampled, containers = true, loose = true, showPoints = true, showLabels = true;
+    private bool busy, sampled, containers = true, loose = true, showPoints = true, showLabels = true, showHeat = true;
+    private sealed record BoxMarker(double X, double Z, int Count, double Weight, string Label);
+    private List<BoxMarker> markers = [];
+    private double maxMarker = 1;
     private int sampleRaids = 25, completedRaids, outside;
     private double totalWeight, maxCell = 1;
     private HeatSample data = new([]);
@@ -238,8 +258,24 @@
         projection = new(bounds.MinX, bounds.MinZ, bounds.MaxX, bounds.MaxZ, Artwork?.Rotation ?? 0);
         outside = all.Count(p => p.X < bounds.MinX || p.X > bounds.MaxX || p.Z < bounds.MinZ || p.Z > bounds.MaxZ);
         visible = all.Where(p => p.X >= bounds.MinX && p.X <= bounds.MaxX && p.Z >= bounds.MinZ && p.Z <= bounds.MaxZ && (floorName.Length == 0 || Artwork?.FloorFor(p) == floorName)).ToList();
-        cells = HeatmapGrid.Aggregate(visible, 40); ranked = HeatmapGrid.Aggregate(visible, 80);
+        // Containers are few fixed objects, so they get markers; the density glow is only for loose loot
+        cells = HeatmapGrid.Aggregate(visible.Where(p => p.Source != "container"), 40); ranked = HeatmapGrid.Aggregate(visible, 80);
+        markers = visible.Where(p => p.Source == "container")
+            .GroupBy(p => (X: Math.Round(p.X / 1.5), Z: Math.Round(p.Z / 1.5)))
+            .Select(g => new BoxMarker(g.Average(p => p.X), g.Average(p => p.Z), g.Count(), g.Sum(p => p.Weight),
+                string.Join(", ", g.GroupBy(p => p.Name).Select(n => n.Count() > 1 ? $"{n.Key} ×{n.Count()}" : n.Key))))
+            .ToList();
+        maxMarker = markers.Select(m => m.Weight).DefaultIfEmpty(1).Max();
         maxCell = cells.Select(c => c.Weight).DefaultIfEmpty(1).Max(); totalWeight = visible.Sum(p => p.Weight) / Divisor; attach = true;
+    }
+    private string Breakdown(HeatCell cell)
+    {
+        var inCell = visible.Where(p => Math.Abs(p.X - cell.X) <= 40 && Math.Abs(p.Z - cell.Z) <= 40).ToList();
+        int boxes = inCell.Count(p => p.Source == "container"), spots = inCell.Count - boxes;
+        var parts = new List<string>();
+        if (boxes > 0) parts.Add(boxes == 1 ? "1 container" : $"{boxes} containers");
+        if (spots > 0) parts.Add(spots == 1 ? "1 loose spot" : $"{spots} loose spots");
+        return string.Join(" · ", parts);
     }
     private string AreaName(double x, double z)
     {
