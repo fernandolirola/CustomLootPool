@@ -56,6 +56,7 @@ public class LootInjectionService(
     LocationConfig locationConfig,
     ItemFilterService itemFilterService,
     SeasonalEventService seasonalEventService,
+    ContainerPositions containerPositions,
     ISptLogger<LootInjectionService> logger
 )
 {
@@ -467,7 +468,8 @@ public class LootInjectionService(
                     int count = spawn.Items?.Count(it => it.Template == tpl) ?? 0;
                     if (spatialMap is not null && count > 0)
                     {
-                        if (ToHeatPoint(spawn.Position, source, source == "container" ? "Container" : "Loose loot") is { } point)
+                        var position = source == "container" ? containerPositions.Resolve(mapId, spawn.Id, spawn.Position) : spawn.Position;
+                        if (ToHeatPoint(position, source, source == "container" ? "Container" : "Loose loot") is { } point)
                         {
                             var key = (Math.Round(point.X, 1), Math.Round(point.Y, 1), Math.Round(point.Z, 1), source);
                             spatial[key] = point with { Weight = (spatial.GetValueOrDefault(key)?.Weight ?? 0) + count };
@@ -854,7 +856,7 @@ public class LootInjectionService(
                     {
                         var root = c.Template!.Items!.FirstOrDefault(i => i.Id.ToString() == c.Template.Root) ?? c.Template.Items!.FirstOrDefault();
                         string tpl = root?.Template.ToString() ?? "";
-                        return (tpl, ToHeatPoint(c.Template.Position, "container", catalog.NameOf(tpl)));
+                        return (tpl, ToHeatPoint(containerPositions.Resolve(mapId, c.Template.Id, c.Template.Position), "container", catalog.NameOf(tpl)));
                     }).ToList();
                 foreach ((MongoId containerId, StaticLootDetails details) in RawValue(location.StaticLoot) ?? [])
                 {

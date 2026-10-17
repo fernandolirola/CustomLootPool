@@ -1,5 +1,10 @@
 # Changes
 
+## 1.3.1
+
+- Loot Atlas now shows containers. Stock SPT stores (0, 0, 0) for every static container, so their real positions were extracted from the game scenes and ship in `wwwroot/maps/container-positions.json` (99.7% of containers on every map, matched by instance Id).
+- Add `tools/container-positions` to regenerate that file after a game update.
+
 ## 1.3.0
 
 ### Improvements

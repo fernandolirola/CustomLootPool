@@ -41,11 +41,12 @@ locations, not spawn probability. **Simulate raids** measures average item
 occurrences per raid in a random sample. Zero observations do not establish
 that spawning is impossible. Bots and airdrops are excluded.
 
-Stock SPT stores placeholder zero coordinates for containers on many maps.
-Those containers and their simulated item occurrences are reported as unmapped
-and excluded from the heatmap, rather than creating a false hotspot at the origin.
-Loose-loot locations have usable coordinates. An item configured only for
-containers may therefore have no plotted locations.
+Stock SPT stores (0, 0, 0) for every static container, because the game client
+takes the position from the map scene. The mod ships real container positions
+extracted from the game scenes (`wwwroot/maps/container-positions.json`), matched
+to SPT by container instance Id. About 99.7% of the containers on every map are
+covered; the rest, and containers on maps added by other mods, are reported as
+unmapped instead of being drawn at the origin.
 
 Source and floor filters apply to both the map and the ranked 80 m cells.
 Landmark names indicate the nearest label, not a region boundary. All-floor
