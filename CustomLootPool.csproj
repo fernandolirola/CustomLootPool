@@ -6,7 +6,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>CustomLootPool</AssemblyName>
     <RootNamespace>CustomLootPool</RootNamespace>
-    <Version>1.2.1</Version>
+    <Version>1.3.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>

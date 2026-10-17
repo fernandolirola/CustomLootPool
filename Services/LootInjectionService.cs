@@ -23,11 +23,14 @@ using SPTarkov.Server.Core.Utils.Json;
 
 namespace CustomLootPool.Services;
 
-public sealed record SimResult(string MapId, string MapName, int Raids, double StaticPerRaid, double LoosePerRaid, string? Error = null);
+public sealed record SimResult(string MapId, string MapName, int Raids, double StaticPerRaid, double LoosePerRaid, string? Error = null, HeatSample? Spatial = null);
 
 public sealed record ItemWarning(string Pt, string En, bool Blocking);
 
-public sealed record MultiplierInfo(string MapId, string MapName, double Static, double Loose);
+public sealed record MultiplierInfo(string MapId, string MapName, double Static, double Loose)
+{
+    public bool Changed => Math.Abs(Static - 1) > 0.01 || Math.Abs(Loose - 1) > 0.01;
+}
 
 public sealed record PoolCategory(string Id, string Name, string Path, int ItemCount);
 
@@ -145,11 +148,11 @@ public class LootInjectionService(
         lazyLoad?.GetType().GetMethod("Clear", Type.EmptyTypes)?.Invoke(lazyLoad, null);
     }
 
-    private void SafeRun(string mapId, string kind, Func<(int containers, int points, List<string> summary)> action)
+    private void SafeRun(string mapId, string kind, Func<List<string>> action)
     {
         try
         {
-            var (containers, points, summary) = action();
+            var summary = action();
             if (_simEntry is not null)
             {
                 return;
@@ -177,7 +180,7 @@ public class LootInjectionService(
     {
         if (_simEntries is { } simulated)
         {
-            return simulated.Where(entry => catalog.Exists(entry.Tpl) && OnMap(entry, mapId)
+            return simulated.Where(entry => catalog.Exists(entry.Tpl) && entry.AllowsMap(mapId)
                 && (ReferenceEquals(entry, _simEntry) || (entry.Enabled && IsActiveNow(entry.Schedule))));
         }
 
@@ -190,14 +193,9 @@ public class LootInjectionService(
         return cfg.Entries.Where(e =>
             e.Enabled
             && catalog.Exists(e.Tpl)
-            && OnMap(e, mapId)
+            && e.AllowsMap(mapId)
             && IsActiveNow(e.Schedule)
         );
-    }
-
-    private static bool OnMap(LootEntry entry, string? mapId)
-    {
-        return entry.Maps.Count == 0 || mapId is null || entry.Maps.Any(m => m.Equals(mapId, StringComparison.OrdinalIgnoreCase));
     }
 
     public static bool IsActiveNow(ScheduleSettings schedule) => IsActiveOn(schedule, DateTime.Now);
@@ -242,12 +240,13 @@ public class LootInjectionService(
 
     private static double ClampChance(double chance) => Math.Clamp(chance, 0.001, MaxChance);
 
-    private (int, int, List<string>) ApplyStatic(string mapId, Dictionary<MongoId, StaticLootDetails> data)
+    private List<string> ApplyStatic(string mapId, Dictionary<MongoId, StaticLootDetails> data)
     {
         var entries = EntriesFor(mapId)
             .Where(e => e.Static.Enabled && ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) > 0)
             .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) / (Compensate ? StaticRatio(mapId) : 1))))
             .ToList();
+        if (entries.Count == 0) return [];
         var counts = new int[entries.Count];
         foreach (var (containerId, details) in data)
         {
@@ -273,7 +272,7 @@ public class LootInjectionService(
                 return distribution;
             }).ToList();
         }
-        return (counts.Sum(), 0, entries.Select((entry, i) => $"{entry.item.Name} → {counts[i]} " + configService.L("tipos de contêiner", "container types")).ToList());
+        return entries.Select((entry, i) => $"{entry.item.Name} → {counts[i]} " + configService.L("tipos de contêiner", "container types")).ToList();
     }
     private bool StaticMatches(StaticLootSettings settings, MongoId containerId, List<ItemDistribution> pool, CatalogItem item)
     {
@@ -310,16 +309,11 @@ public class LootInjectionService(
         return false;
     }
 
-    private string ParentOf(MongoId tpl)
-    {
-        return templateTable.Items.TryGetValue(tpl, out var t) ? t.Parent.ToString() : string.Empty;
-    }
-
-    private (int, int, List<string>) ApplyLoose(string mapId, LooseLoot data)
+    private List<string> ApplyLoose(string mapId, LooseLoot data)
     {
         var entries = EntriesFor(mapId).Where(e => (e.Loose.Enabled && ChanceFor(e.Loose.ChancePercent, e.Loose.MapChances, mapId) > 0) || e.Guaranteed).ToList();
         var summary = new List<string>();
-        if (entries.Count == 0 || data.Spawnpoints is null) return (0, 0, summary);
+        if (entries.Count == 0 || data.Spawnpoints is null) return summary;
         var spawnpoints = data.Spawnpoints.ToList();
         data.Spawnpoints = spawnpoints;
         double ratio = LooseRatio(mapId, data.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(spawnpoints));
@@ -371,7 +365,7 @@ public class LootInjectionService(
         }
         if (forced.Count > 0) data.SpawnpointsForced = (data.SpawnpointsForced ?? []).Concat(forced).ToList();
         if (count > 0) summary.Add($"{count} " + configService.L("pontos de spawn ajustados", "spawn points adjusted"));
-        return (0, count, summary);
+        return summary;
     }
     /// <summary>
     /// SPT spawns one forced spawnpoint per template id, drawn among entries sharing that id,
@@ -429,7 +423,7 @@ public class LootInjectionService(
         ];
     }
 
-    public async Task<List<SimResult>> Simulate(LootEntry entry, int raids, bool compensate, Action<string>? progress = null, CancellationToken ct = default, LootPoolConfig? context = null)
+    public async Task<List<SimResult>> Simulate(LootEntry entry, int raids, bool compensate, Action<string>? progress = null, CancellationToken ct = default, LootPoolConfig? context = null, string? spatialMap = null)
     {
         if (raids is < 1 or > 1000) throw new ArgumentOutOfRangeException(nameof(raids));
         var results = new List<SimResult>();
@@ -455,7 +449,8 @@ public class LootInjectionService(
             var tpl = new MongoId(item.Id);
 
             var maps = _maps
-                .Where(m => entry.Maps.Count == 0 || entry.Maps.Contains(m.Key, StringComparer.OrdinalIgnoreCase))
+                .Where(m => entry.AllowsMap(m.Key))
+                .Where(m => spatialMap is null || m.Key.Equals(spatialMap, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(m => MapName(m.Key))
                 .ToList();
 
@@ -463,6 +458,24 @@ public class LootInjectionService(
             {
                 ct.ThrowIfCancellationRequested();
                 progress?.Invoke(MapName(mapId));
+
+                var spatial = new Dictionary<(double X, double Y, double Z, string Source), HeatPoint>();
+                int missing = 0;
+                int missingContainers = 0;
+                int CountLoot(SpawnpointTemplate spawn, string source)
+                {
+                    int count = spawn.Items?.Count(it => it.Template == tpl) ?? 0;
+                    if (spatialMap is not null && count > 0)
+                    {
+                        if (ToHeatPoint(spawn.Position, source, source == "container" ? "Container" : "Loose loot") is { } point)
+                        {
+                            var key = (Math.Round(point.X, 1), Math.Round(point.Y, 1), Math.Round(point.Z, 1), source);
+                            spatial[key] = point with { Weight = (spatial.GetValueOrDefault(key)?.Weight ?? 0) + count };
+                        }
+                        else { missing += count; if (source == "container") missingContainers += count; }
+                    }
+                    return count;
+                }
 
                 var (st, lo, error) = await Task.Run(() =>
                 {
@@ -477,9 +490,9 @@ public class LootInjectionService(
                             ct.ThrowIfCancellationRequested();
                             var ammo = cloner.Clone(location.StaticAmmo) ?? [];
                             var counts = SimulationRaid.Run(counter, locationConfig.LootMaxSpawnLimits.GetValueOrDefault(mapId),
-                                () => generator.GenerateStaticContainers(mapId, ammo).Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0),
+                                () => generator.GenerateStaticContainers(mapId, ammo).Sum(sp => CountLoot(sp, "container")),
                                 () => location.LooseLoot?.Value is { } loose
-                                    ? generator.GenerateDynamicLoot(cloner.Clone(loose)!, ammo, mapId).Sum(sp => sp.Items?.Count(it => it.Template == tpl) ?? 0)
+                                    ? generator.GenerateDynamicLoot(cloner.Clone(loose)!, ammo, mapId).Sum(sp => CountLoot(sp, "loose"))
                                     : 0);
                             staticCount += counts.Static;
                             looseCount += counts.Loose;
@@ -502,7 +515,8 @@ public class LootInjectionService(
                     }
                 }, ct);
 
-                results.Add(new SimResult(mapId, MapName(mapId), raids, (double)st / raids, (double)lo / raids, error));
+                results.Add(new SimResult(mapId, MapName(mapId), raids, (double)st / raids, (double)lo / raids, error,
+                    spatialMap is null || error is not null ? null : new HeatSample(spatial.Values.ToList(), missing, missingContainers)));
             }
         }
         finally
@@ -524,12 +538,11 @@ public class LootInjectionService(
             return result;
         }
 
-        var staticTargets = TargetCategories(entry.Static.Mode, entry.Static.Categories, item);
         var looseTargets = TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item);
 
         foreach (string mapId in _maps.Keys.OrderBy(MapName))
         {
-            if (entry.Maps.Count > 0 && !entry.Maps.Contains(mapId, StringComparer.OrdinalIgnoreCase))
+            if (!entry.AllowsMap(mapId))
             {
                 continue;
             }
@@ -537,16 +550,7 @@ public class LootInjectionService(
             var containers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (entry.Static.Enabled)
             {
-                var onMap = index.MapContainers.GetValueOrDefault(mapId) ?? [];
-                IEnumerable<string> candidates = entry.Static.Mode switch
-                {
-                    TargetMode.All => onMap,
-                    TargetMode.Selected => entry.Static.Containers.Where(onMap.Contains),
-                    _ => staticTargets.SelectMany(c => (index.StaticContainers.GetValueOrDefault(c) ?? [])
-                        .Where(kv => kv.Value.Contains(mapId))
-                        .Select(kv => kv.Key)),
-                };
-                containers.UnionWith(candidates.Where(id => Fits(new MongoId(id), item)));
+                containers = EligibleContainers(index, entry.Static, item, mapId);
             }
 
             int points = 0;
@@ -558,16 +562,7 @@ public class LootInjectionService(
                 }
                 else
                 {
-                    var union = new HashSet<int>();
-                    foreach (var category in looseTargets)
-                    {
-                        if (index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(mapId) is { } set)
-                        {
-                            union.UnionWith(set);
-                        }
-                    }
-
-                    points = union.Count;
+                    points = SpotsForCategories(index, mapId, looseTargets).Count;
                 }
             }
 
@@ -576,6 +571,57 @@ public class LootInjectionService(
         }
 
         return result;
+    }
+
+    private HashSet<string> EligibleContainers(PoolIndex index, StaticLootSettings settings, CatalogItem item, string mapId)
+    {
+        var onMap = index.MapContainers.GetValueOrDefault(mapId) ?? [];
+        IEnumerable<string> candidates = settings.Mode switch
+        {
+            TargetMode.All => onMap,
+            TargetMode.Selected => settings.Containers.Where(onMap.Contains),
+            _ => TargetCategories(settings.Mode, settings.Categories, item)
+                .SelectMany(category => (index.StaticContainers.GetValueOrDefault(category) ?? [])
+                    .Where(pair => pair.Value.Contains(mapId)).Select(pair => pair.Key)),
+        };
+        return candidates.Where(id => Fits(new MongoId(id), item)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static HashSet<int> SpotsForCategories(PoolIndex index, string mapId, IEnumerable<string> categories) =>
+        categories.SelectMany(category => index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(mapId) ?? []).ToHashSet();
+
+    private static HeatPoint? ToHeatPoint(Vector3? position, string source, string name) =>
+        position is { } p && float.IsFinite(p.X) && float.IsFinite(p.Y) && float.IsFinite(p.Z)
+            // Zero vectors in stock container records are placeholders, not world positions.
+            && !(source == "container" && p.X == 0 && p.Y == 0 && p.Z == 0)
+            ? new(p.X, p.Y, p.Z, source, name) : null;
+
+    public async Task<HeatSample> HeatLocations(LootEntry entry, string mapId)
+    {
+        await EnsurePoolIndex();
+        if (!_maps.ContainsKey(mapId) || !entry.AllowsMap(mapId) || catalog.Get(entry.Tpl) is not { } item)
+            return new([]);
+        var index = _poolIndex!.Result;
+        var points = new List<HeatPoint>();
+        int missing = 0, missingContainers = 0;
+        void Add(HeatPoint? point) { if (point is null) missing++; else points.Add(point); }
+        if (entry.Static.Enabled && ChanceFor(entry.Static.ChancePercent, entry.Static.MapChances, mapId) > 0)
+        {
+            var allowed = EligibleContainers(index, entry.Static, item, mapId);
+            foreach (var (container, point) in index.ContainerPositions.GetValueOrDefault(mapId) ?? [])
+                if (allowed.Contains(container)) { Add(point); if (point is null) missingContainers++; }
+        }
+        if ((entry.Loose.Enabled && ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId) > 0) || entry.Guaranteed)
+        {
+            var positions = index.LoosePositions.GetValueOrDefault(mapId) ?? [];
+            var targets = TargetCategories(entry.Loose.Enabled ? entry.Loose.Mode : TargetMode.Similar, entry.Loose.Categories, item);
+            var matching = entry.Loose.Enabled && entry.Loose.Mode == TargetMode.All
+                ? positions.Keys.ToHashSet()
+                : SpotsForCategories(index, mapId, targets);
+            if (entry.Guaranteed && !matching.Any(positions.ContainsKey)) matching = positions.Keys.ToHashSet();
+            foreach (int id in matching) if (positions.TryGetValue(id, out var point)) Add(point);
+        }
+        return new(points, missing, missingContainers);
     }
 
     private List<(string Id, string Name)>? _containerCache;
@@ -649,8 +695,6 @@ public class LootInjectionService(
             })
             .ToList();
     }
-
-    public bool MultipliersChanged() => GetMultipliers()?.Any(m => Math.Abs(m.Static - 1) > 0.01 || Math.Abs(m.Loose - 1) > 0.01) ?? false;
 
     public List<ItemWarning> GetItemWarnings(string tplId)
     {
@@ -764,6 +808,8 @@ public class LootInjectionService(
 
     private sealed class PoolIndex
     {
+        public Dictionary<string, List<(string Container, HeatPoint? Point)>> ContainerPositions { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, Dictionary<int, HeatPoint?>> LoosePositions { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, Dictionary<string, HashSet<string>>> StaticContainers { get; } = [];
         // Summed share of the pools each item appears in, used to rank the examples
         public Dictionary<string, Dictionary<string, ItemStat>> StaticItems { get; } = [];
@@ -802,6 +848,14 @@ public class LootInjectionService(
         {
             foreach ((string mapId, Location location) in _maps)
             {
+                index.ContainerPositions[mapId] = (RawValue(location.StaticContainers)?.StaticContainers ?? [])
+                    .Where(c => c.Template?.Items is not null && c.Probability.GetValueOrDefault(1) > 0)
+                    .Select(c =>
+                    {
+                        var root = c.Template!.Items!.FirstOrDefault(i => i.Id.ToString() == c.Template.Root) ?? c.Template.Items!.FirstOrDefault();
+                        string tpl = root?.Template.ToString() ?? "";
+                        return (tpl, ToHeatPoint(c.Template.Position, "container", catalog.NameOf(tpl)));
+                    }).ToList();
                 foreach ((MongoId containerId, StaticLootDetails details) in RawValue(location.StaticLoot) ?? [])
                 {
                     var pool = details?.ItemDistribution?.ToList() ?? [];
@@ -838,6 +892,7 @@ public class LootInjectionService(
 
                 var looseLoot = RawValue(location.LooseLoot);
                 var allSpawnpoints = looseLoot?.Spawnpoints?.ToList() ?? [];
+                index.LoosePositions[mapId] = [];
                 index.LooseStats[mapId] = (looseLoot?.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(allSpawnpoints));
 
                 for (int spIndex = 0; spIndex < allSpawnpoints.Count; spIndex++)
@@ -849,6 +904,8 @@ public class LootInjectionService(
                     }
 
                     index.LooseSpotCount[mapId] = index.LooseSpotCount.GetValueOrDefault(mapId) + 1;
+                    if (sp.ItemDistribution.Sum(d => d.RelativeProbability ?? 0) > 0)
+                        index.LoosePositions[mapId][spIndex] = ToHeatPoint(sp.Template.Position, "loose", "Loose loot");
 
                     var weights = sp.ItemDistribution
                         .Where(d => d.ComposedKey?.Key is not null)
@@ -935,8 +992,6 @@ public class LootInjectionService(
         return bucket;
     }
 
-    private static void Add(Dictionary<string, double> bucket, string key, double value) => bucket[key] = bucket.GetValueOrDefault(key) + value;
-
     public List<PoolCategory>? GetPoolCategories()
     {
         if (!PoolIndexReady)
@@ -972,7 +1027,7 @@ public class LootInjectionService(
         }
 
         var index = _poolIndex!.Result;
-        bool MapAllowed(string map) => entry.Maps.Count == 0 || entry.Maps.Contains(map, StringComparer.OrdinalIgnoreCase);
+        bool MapAllowed(string map) => entry.AllowsMap(map);
         var targets = loose
             ? TargetCategories(entry.Loose.Mode, entry.Loose.Categories, item)
             : TargetCategories(entry.Static.Mode, entry.Static.Categories, item);
@@ -1004,16 +1059,7 @@ public class LootInjectionService(
         {
             foreach (var map in _maps.Keys.Where(MapAllowed))
             {
-                var union = new HashSet<int>();
-                foreach (var category in targets)
-                {
-                    if (index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(map) is { } set)
-                    {
-                        union.UnionWith(set);
-                    }
-                }
-
-                spots += union.Count;
+                spots += SpotsForCategories(index, map, targets).Count;
             }
         }
         else

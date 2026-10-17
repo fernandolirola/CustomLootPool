@@ -15,7 +15,7 @@ internal static class PoolWeights
         foreach (var pair in original.Where(pair => !targets.ContainsKey(pair.Key)))
             result[pair.Key] = normalize ? 0 : Math.Max(0, pair.Value) / otherTotal * (100 - requestedTotal);
         foreach (var pair in targets)
-            result[pair.Key] = normalize ? pair.Value / requestedTotal * 100 : pair.Value;
+            result[pair.Key] = normalize && requestedTotal > 0 ? pair.Value / requestedTotal * 100 : pair.Value;
         return result;
     }
 }

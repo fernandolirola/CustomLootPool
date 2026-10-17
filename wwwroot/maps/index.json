@@ -1,0 +1,2363 @@
+[
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": -6.0,
+            "MinZ": -295.0,
+            "MaxHeight": 10.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "streets-of-tarkov/Ground_Level.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": 10.0,
+            "MinZ": -295.0,
+            "MaxHeight": 15.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "streets-of-tarkov/Second_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": 15.0,
+            "MinZ": -295.0,
+            "MaxHeight": 20.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "streets-of-tarkov/Third_Floor.svg"
+      },
+      {
+        "Level": 3,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": 20.0,
+            "MinZ": -295.0,
+            "MaxHeight": 25.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "4th Floor",
+        "ImagePath": "streets-of-tarkov/Fourth_Floor.svg"
+      },
+      {
+        "Level": 4,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": 25.0,
+            "MinZ": -295.0,
+            "MaxHeight": 10000.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "5th Floor",
+        "ImagePath": "streets-of-tarkov/Fifth_Floor.svg"
+      },
+      {
+        "Level": -1,
+        "Volumes": [
+          {
+            "MinX": -280.0,
+            "MaxZ": 532.0,
+            "MinHeight": -10000.0,
+            "MinZ": -295.0,
+            "MaxHeight": -6.0,
+            "MaxX": 323.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 532.0,
+          "MinX": -280.0,
+          "MaxX": 323.0,
+          "MinZ": -295.0
+        },
+        "Name": "Underground",
+        "ImagePath": "streets-of-tarkov/Underground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "streets-of-tarkov",
+    "Maps": [
+      "tarkovstreets"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": 9.0,
+        "Z": 308.0,
+        "Name": "Primorsky Ave."
+      },
+      {
+        "X": 9.0,
+        "Z": 104.0,
+        "Name": "Primorsky Ave."
+      },
+      {
+        "X": 9.0,
+        "Z": -80.0,
+        "Name": "Primorsky Ave."
+      },
+      {
+        "X": 125.0,
+        "Z": 10.0,
+        "Name": "Kilmov St."
+      },
+      {
+        "X": -104.0,
+        "Z": 28.0,
+        "Name": "Kilmov St."
+      },
+      {
+        "X": -125.0,
+        "Z": 210.0,
+        "Name": "Nikitskaya St."
+      },
+      {
+        "X": -112.0,
+        "Z": 361.0,
+        "Name": "Verhnyaya St."
+      },
+      {
+        "X": -200.0,
+        "Z": 290.0,
+        "Name": "Malevecha St."
+      },
+      {
+        "X": 111.0,
+        "Z": 251.0,
+        "Name": "Chekannaya St."
+      },
+      {
+        "X": -101.0,
+        "Z": 441.0,
+        "Name": "Nizhnyaya St."
+      },
+      {
+        "X": 174.0,
+        "Z": 430.0,
+        "Name": "Razvedchikov St."
+      },
+      {
+        "X": 140.0,
+        "Z": 150.0,
+        "Name": "Zmejskij Alley"
+      },
+      {
+        "X": 232.0,
+        "Z": 100.0,
+        "Name": "Kamchatskaya St."
+      },
+      {
+        "X": -128.0,
+        "Z": -35.0,
+        "Name": "Kilmov Shopping Mall"
+      },
+      {
+        "X": -45.0,
+        "Z": -52.0,
+        "Name": "Beluga"
+      },
+      {
+        "X": 99.0,
+        "Z": -71.0,
+        "Name": "Cardinal Apartments"
+      },
+      {
+        "X": 230.0,
+        "Z": 295.0,
+        "Name": "Construction"
+      },
+      {
+        "X": 66.0,
+        "Z": 305.0,
+        "Name": "Lexos"
+      },
+      {
+        "X": 140.0,
+        "Z": 300.0,
+        "Name": "Sparja Grocery"
+      },
+      {
+        "X": -175.0,
+        "Z": 400.0,
+        "Name": "Cinema"
+      },
+      {
+        "X": -218.0,
+        "Z": 135.0,
+        "Name": "Shestyorochka"
+      },
+      {
+        "X": -35.0,
+        "Z": 64.0,
+        "Name": "Pinewood Hotel"
+      },
+      {
+        "X": 65.0,
+        "Z": 398.0,
+        "Name": "Teppakot / Koener"
+      },
+      {
+        "X": 140.0,
+        "Z": 362.0,
+        "Name": "Concordia"
+      },
+      {
+        "X": 89.0,
+        "Z": -20.0,
+        "Name": "Cardinal Bank"
+      },
+      {
+        "X": 239.0,
+        "Z": -60.0,
+        "Name": "LERM Expo"
+      },
+      {
+        "X": -64.0,
+        "Z": 166.0,
+        "Name": "Sparja Express"
+      },
+      {
+        "X": -30.0,
+        "Z": 138.0,
+        "Name": "Burger Spot"
+      },
+      {
+        "X": 42.0,
+        "Z": 97.0,
+        "Name": "Post Office"
+      },
+      {
+        "X": 42.0,
+        "Z": 160.0,
+        "Name": "Pharmacy 1"
+      },
+      {
+        "X": -173.0,
+        "Z": 226.0,
+        "Name": "Office"
+      },
+      {
+        "X": -197.0,
+        "Z": 340.0,
+        "Name": "Corner Restaurant"
+      },
+      {
+        "X": -43.0,
+        "Z": 335.0,
+        "Name": "Pharmacy 2"
+      },
+      {
+        "X": 90.0,
+        "Z": -277.0,
+        "Name": "Pharmacy 3"
+      },
+      {
+        "X": 67.0,
+        "Z": 230.0,
+        "Name": "Tarbank"
+      },
+      {
+        "X": 211.0,
+        "Z": 129.0,
+        "Name": "School"
+      },
+      {
+        "X": 222.0,
+        "Z": 173.0,
+        "Name": "Vet Clinic"
+      },
+      {
+        "X": -212.0,
+        "Z": 300.0,
+        "Name": "Hive"
+      },
+      {
+        "X": -223.0,
+        "Z": 279.0,
+        "Name": "Family Market"
+      },
+      {
+        "X": -200.0,
+        "Z": 248.0,
+        "Name": "Marked Hotel"
+      },
+      {
+        "X": -175.0,
+        "Z": 297.0,
+        "Name": "South Hotel"
+      },
+      {
+        "X": -119.0,
+        "Z": 287.0,
+        "Name": "Abandon Factory"
+      },
+      {
+        "X": -80.0,
+        "Z": 235.0,
+        "Name": "Diner"
+      },
+      {
+        "X": -13.0,
+        "Z": 244.0,
+        "Name": "Primorskij 49"
+      },
+      {
+        "X": 39.0,
+        "Z": 230.0,
+        "Name": "Prestigio Cafe"
+      },
+      {
+        "X": -70.0,
+        "Z": 343.0,
+        "Name": "Bilbo Coffee"
+      }
+    ],
+    "Id": "streets-of-tarkov"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -99.0,
+            "MaxZ": 364.0,
+            "MinHeight": -1000.0,
+            "MinZ": -124.0,
+            "MaxHeight": 28.0,
+            "MaxX": 249.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 364.0,
+          "MinX": -99.0,
+          "MaxX": 249.0,
+          "MinZ": -124.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "ground-zero/Ground_Level.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": -99.0,
+            "MaxZ": 364.0,
+            "MinHeight": 28.0,
+            "MinZ": -124.0,
+            "MaxHeight": 32.3,
+            "MaxX": 249.0
+          },
+          {
+            "MinX": 91.0,
+            "MaxZ": 228.0,
+            "MinHeight": 26.0,
+            "MinZ": 216.0,
+            "MaxHeight": 31.0,
+            "MaxX": 98.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 364.0,
+          "MinX": -99.0,
+          "MaxX": 249.0,
+          "MinZ": -124.0
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "ground-zero/Second_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": -99.0,
+            "MaxZ": 364.0,
+            "MinHeight": 32.3,
+            "MinZ": -124.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 249.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 364.0,
+          "MinX": -99.0,
+          "MaxX": 249.0,
+          "MinZ": -124.0
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "ground-zero/Third_Floor.svg"
+      },
+      {
+        "Level": 3,
+        "Volumes": [
+          {
+            "MinX": 43.0,
+            "MaxZ": 190.0,
+            "MinHeight": -1000.0,
+            "MinZ": -100.0,
+            "MaxHeight": 21.0,
+            "MaxX": 117.0
+          },
+          {
+            "MinX": 117.0,
+            "MaxZ": 80.0,
+            "MinHeight": -1000.0,
+            "MinZ": 49.0,
+            "MaxHeight": 21.0,
+            "MaxX": 143.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 364.0,
+          "MinX": -99.0,
+          "MaxX": 249.0,
+          "MinZ": -124.0
+        },
+        "Name": "Garage",
+        "ImagePath": "ground-zero/Underground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "ground-zero",
+    "Maps": [
+      "sandbox",
+      "sandbox_high"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": -50.0,
+        "Z": 0.0,
+        "Name": "TerraGroup"
+      },
+      {
+        "X": 150.0,
+        "Z": 1.0,
+        "Name": "Skyside"
+      },
+      {
+        "X": 141.0,
+        "Z": 142.0,
+        "Name": "Fusion"
+      },
+      {
+        "X": 14.0,
+        "Z": 201.0,
+        "Name": "Empire"
+      },
+      {
+        "X": 115.0,
+        "Z": 285.0,
+        "Name": "Capital Insight"
+      },
+      {
+        "X": 2.0,
+        "Z": 324.0,
+        "Name": "Nakatani"
+      },
+      {
+        "X": 80.0,
+        "Z": -118.0,
+        "Name": "Elemental Global"
+      },
+      {
+        "X": 115.0,
+        "Z": 104.0,
+        "Name": "Oasis"
+      },
+      {
+        "X": 115.0,
+        "Z": 30.0,
+        "Name": "ASAP Winery"
+      },
+      {
+        "X": 43.0,
+        "Z": 150.0,
+        "Name": "Tarbank"
+      },
+      {
+        "X": 58.0,
+        "Z": 234.0,
+        "Name": "GAGRIN Hotel"
+      },
+      {
+        "X": 97.0,
+        "Z": 223.0,
+        "Name": "M Showroom"
+      },
+      {
+        "X": -13.0,
+        "Z": 48.0,
+        "Name": "Science Office"
+      }
+    ],
+    "Id": "ground-zero"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -372.0,
+            "MaxZ": 237.0,
+            "MinHeight": -1000.0,
+            "MinZ": -307.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 698.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 237.0,
+          "MinX": -372.0,
+          "MaxX": 698.0,
+          "MinZ": -307.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "customs/Ground_Level.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": 165.0,
+            "MaxZ": 190.0,
+            "MinHeight": 2.7,
+            "MinZ": 125.0,
+            "MaxHeight": 6.5,
+            "MaxX": 243.0
+          },
+          {
+            "MinX": 72.0,
+            "MaxZ": -83.0,
+            "MinHeight": 2.7,
+            "MinZ": -170.0,
+            "MaxHeight": 6.5,
+            "MaxX": 116.0
+          },
+          {
+            "MinX": 341.0,
+            "MaxZ": -30.0,
+            "MinHeight": 2.7,
+            "MinZ": -84.0,
+            "MaxHeight": 6.5,
+            "MaxX": 356.0
+          },
+          {
+            "MinX": 321.0,
+            "MaxZ": -52.0,
+            "MinHeight": 2.7,
+            "MinZ": -59.0,
+            "MaxHeight": 6.5,
+            "MaxX": 334.0
+          },
+          {
+            "MinX": 577.0,
+            "MaxZ": 10.0,
+            "MinHeight": 2.7,
+            "MinZ": -1.0,
+            "MaxHeight": 6.5,
+            "MaxX": 589.0
+          },
+          {
+            "MinX": 532.0,
+            "MaxZ": -104.0,
+            "MinHeight": 2.7,
+            "MinZ": -134.0,
+            "MaxHeight": 6.5,
+            "MaxX": 580.0
+          },
+          {
+            "MinX": 599.0,
+            "MaxZ": -120.0,
+            "MinHeight": 2.7,
+            "MinZ": -139.0,
+            "MaxHeight": 6.5,
+            "MaxX": 625.0
+          },
+          {
+            "MinX": 532.0,
+            "MaxZ": -104.0,
+            "MinHeight": 5.7,
+            "MinZ": -134.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 580.0
+          },
+          {
+            "MinX": -223.0,
+            "MaxZ": -90.0,
+            "MinHeight": 5.7,
+            "MinZ": -131.0,
+            "MaxHeight": 1000.0,
+            "MaxX": -199.0
+          },
+          {
+            "MinX": 169.0,
+            "MaxZ": 3.0,
+            "MinHeight": 5.7,
+            "MinZ": -160.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 239.0
+          },
+          {
+            "MinX": 316.0,
+            "MaxZ": -56.0,
+            "MinHeight": 5.7,
+            "MinZ": -95.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 336.0
+          },
+          {
+            "MinX": 556.0,
+            "MaxZ": -46.0,
+            "MinHeight": 5.7,
+            "MinZ": -92.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 584.0
+          },
+          {
+            "MinX": 65.0,
+            "MaxZ": 0.0,
+            "MinHeight": 5.7,
+            "MinZ": -22.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 93.0
+          },
+          {
+            "MinX": 450.0,
+            "MaxZ": -44.0,
+            "MinHeight": 14.0,
+            "MinZ": -90.0,
+            "MaxHeight": 15.0,
+            "MaxX": 497.0
+          },
+          {
+            "MinX": 22.0,
+            "MaxZ": 57.0,
+            "MinHeight": 3.9,
+            "MinZ": -38.0,
+            "MaxHeight": 7.6,
+            "MaxX": 73.0
+          },
+          {
+            "MinX": 100.0,
+            "MaxZ": -42.0,
+            "MinHeight": 4.4,
+            "MinZ": -57.0,
+            "MaxHeight": 6.5,
+            "MaxX": 119.0
+          },
+          {
+            "MinX": 246.0,
+            "MaxZ": -1.4,
+            "MinHeight": 4.6,
+            "MinZ": -79.0,
+            "MaxHeight": 7.9,
+            "MaxX": 279.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 237.0,
+          "MinX": -372.0,
+          "MaxX": 698.0,
+          "MinZ": -307.0
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "customs/Second_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": 165.0,
+            "MaxZ": 190.0,
+            "MinHeight": 5.7,
+            "MinZ": 125.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 243.0
+          },
+          {
+            "MinX": 22.0,
+            "MaxZ": -38.0,
+            "MinHeight": 7.7,
+            "MinZ": -73.0,
+            "MaxHeight": 11.3,
+            "MaxX": 73.0
+          },
+          {
+            "MinX": 88.0,
+            "MaxZ": -35.0,
+            "MinHeight": 6.7,
+            "MinZ": -64.0,
+            "MaxHeight": 11.6,
+            "MaxX": 126.0
+          },
+          {
+            "MinX": 246.0,
+            "MaxZ": -1.4,
+            "MinHeight": 8.0,
+            "MinZ": -79.0,
+            "MaxHeight": 11.1,
+            "MaxX": 279.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 237.0,
+          "MinX": -372.0,
+          "MaxX": 698.0,
+          "MinZ": -307.0
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "customs/Third_Floor.svg"
+      },
+      {
+        "Level": -1,
+        "Volumes": [
+          {
+            "MinX": 620.0,
+            "MaxZ": -125.0,
+            "MinHeight": -1000.0,
+            "MinZ": -137.0,
+            "MaxHeight": 0.5,
+            "MaxX": 635.0
+          },
+          {
+            "MinX": 458.0,
+            "MaxZ": -110.0,
+            "MinHeight": -1000.0,
+            "MinZ": -122.0,
+            "MaxHeight": 0.5,
+            "MaxX": 473.0
+          },
+          {
+            "MinX": 308.0,
+            "MaxZ": -173.0,
+            "MinHeight": -1000.0,
+            "MinZ": -184.0,
+            "MaxHeight": 0.5,
+            "MaxX": 314.0
+          },
+          {
+            "MinX": 323.0,
+            "MaxZ": -32.0,
+            "MinHeight": -1000.0,
+            "MinZ": -88.0,
+            "MaxHeight": 0.5,
+            "MaxX": 349.0
+          },
+          {
+            "MinX": 193.0,
+            "MaxZ": -137.0,
+            "MinHeight": -1000.0,
+            "MinZ": -158.0,
+            "MaxHeight": 0.5,
+            "MaxX": 219.0
+          },
+          {
+            "MinX": 88.0,
+            "MaxZ": -40.0,
+            "MinHeight": -1000.0,
+            "MinZ": -61.0,
+            "MaxHeight": 0.5,
+            "MaxX": 122.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 237.0,
+          "MinX": -372.0,
+          "MaxX": 698.0,
+          "MinZ": -307.0
+        },
+        "Name": "Underground",
+        "ImagePath": "customs/Underground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "customs",
+    "Maps": [
+      "bigmap"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": -215.0,
+        "Z": -119.0,
+        "Name": "Big Red"
+      },
+      {
+        "X": 200.0,
+        "Z": 150.0,
+        "Name": "Dorms"
+      },
+      {
+        "X": 404.0,
+        "Z": 31.0,
+        "Name": "New Gas"
+      },
+      {
+        "X": 331.0,
+        "Z": -173.0,
+        "Name": "Old Gas"
+      },
+      {
+        "X": 201.0,
+        "Z": -127.0,
+        "Name": "Fortress"
+      },
+      {
+        "X": 83.0,
+        "Z": -153.0,
+        "Name": "Crackhouse"
+      },
+      {
+        "X": 567.0,
+        "Z": -67.0,
+        "Name": "Streamer House"
+      },
+      {
+        "X": -69.0,
+        "Z": 9.0,
+        "Name": "Main Bridge"
+      },
+      {
+        "X": 110.0,
+        "Z": 85.0,
+        "Name": "Sniper Hill"
+      },
+      {
+        "X": -288.0,
+        "Z": -134.0,
+        "Name": "Storage"
+      },
+      {
+        "X": -211.0,
+        "Z": -219.0,
+        "Name": "Trailer Park"
+      },
+      {
+        "X": -66.0,
+        "Z": 46.0,
+        "Name": "Junk Bridge"
+      },
+      {
+        "X": 106.0,
+        "Z": -90.0,
+        "Name": "Repair Shop"
+      },
+      {
+        "X": 491.0,
+        "Z": 63.0,
+        "Name": "Sniper Ridge"
+      },
+      {
+        "X": 75.0,
+        "Z": -9.0,
+        "Name": "Old Construction"
+      },
+      {
+        "X": 200.0,
+        "Z": -13.0,
+        "Name": "Skeleton"
+      },
+      {
+        "X": 390.0,
+        "Z": -94.0,
+        "Name": "Warehouse 3"
+      },
+      {
+        "X": 472.0,
+        "Z": -67.0,
+        "Name": "Depot"
+      },
+      {
+        "X": 555.0,
+        "Z": -118.0,
+        "Name": "Warehouse 7"
+      },
+      {
+        "X": 572.0,
+        "Z": 0.0,
+        "Name": "Military Checkpoint"
+      },
+      {
+        "X": 238.0,
+        "Z": 53.0,
+        "Name": "Bus Station"
+      },
+      {
+        "X": 333.0,
+        "Z": -67.0,
+        "Name": "Warehouse 4"
+      },
+      {
+        "X": 497.0,
+        "Z": 110.0,
+        "Name": "Powerline Tower"
+      },
+      {
+        "X": 46.0,
+        "Z": -59.0,
+        "Name": "Warehouse 17"
+      }
+    ],
+    "Id": "customs"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -65.5,
+            "MaxZ": 67.4,
+            "MinHeight": -1.0,
+            "MinZ": -64.5,
+            "MaxHeight": 3.0,
+            "MaxX": 77.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 67.4,
+          "MinX": -65.5,
+          "MaxX": 77.0,
+          "MinZ": -64.5
+        },
+        "Name": "Ground level",
+        "ImagePath": "factory/Ground_Floor.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": -65.5,
+            "MaxZ": 67.4,
+            "MinHeight": 3.0,
+            "MinZ": -64.5,
+            "MaxHeight": 6.0,
+            "MaxX": 77.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 67.4,
+          "MinX": -65.5,
+          "MaxX": 77.0,
+          "MinZ": -64.5
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "factory/Second_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": -65.5,
+            "MaxZ": 67.4,
+            "MinHeight": 6.0,
+            "MinZ": -64.5,
+            "MaxHeight": 10000.0,
+            "MaxX": 77.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 67.4,
+          "MinX": -65.5,
+          "MaxX": 77.0,
+          "MinZ": -64.5
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "factory/Third_Floor.svg"
+      },
+      {
+        "Level": -1,
+        "Volumes": [
+          {
+            "MinX": -65.5,
+            "MaxZ": 67.4,
+            "MinHeight": -10000.0,
+            "MinZ": -64.5,
+            "MaxHeight": -1.0,
+            "MaxX": 77.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 67.4,
+          "MinX": -65.5,
+          "MaxX": 77.0,
+          "MinZ": -64.5
+        },
+        "Name": "Tunnels",
+        "ImagePath": "factory/Basement.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "factory",
+    "Maps": [
+      "factory4_day",
+      "factory4_night"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 90,
+    "Landmarks": [
+      {
+        "X": 21.0,
+        "Z": 39.0,
+        "Name": "Office Building"
+      },
+      {
+        "X": 15.5,
+        "Z": 39.0,
+        "Name": "Main Office"
+      },
+      {
+        "X": 24.5,
+        "Z": 39.0,
+        "Name": "Breach Room"
+      },
+      {
+        "X": 30.5,
+        "Z": 39.0,
+        "Name": "Locked Office"
+      },
+      {
+        "X": 35.0,
+        "Z": 39.0,
+        "Name": "North Stairs"
+      },
+      {
+        "X": 9.0,
+        "Z": 39.0,
+        "Name": "South Stairs"
+      },
+      {
+        "X": 34.0,
+        "Z": 26.0,
+        "Name": "Sky Bridge"
+      },
+      {
+        "X": 29.5,
+        "Z": 17.0,
+        "Name": "Connector"
+      },
+      {
+        "X": 29.0,
+        "Z": 41.0,
+        "Name": "Locker Rooms"
+      },
+      {
+        "X": 15.0,
+        "Z": 41.0,
+        "Name": "Sinks"
+      },
+      {
+        "X": 20.0,
+        "Z": 42.0,
+        "Name": "Hole"
+      },
+      {
+        "X": -3.0,
+        "Z": 37.0,
+        "Name": "Platform"
+      },
+      {
+        "X": -21.0,
+        "Z": 27.0,
+        "Name": "Servers"
+      },
+      {
+        "X": -18.0,
+        "Z": -29.0,
+        "Name": "Med Tent"
+      },
+      {
+        "X": 4.5,
+        "Z": 10.5,
+        "Name": "Silos"
+      },
+      {
+        "X": 30.0,
+        "Z": -8.5,
+        "Name": "Heli Crash"
+      },
+      {
+        "X": -1.0,
+        "Z": 16.0,
+        "Name": "Pit"
+      },
+      {
+        "X": -2.0,
+        "Z": -24.5,
+        "Name": "Underground Stash"
+      },
+      {
+        "X": -20.5,
+        "Z": 23.0,
+        "Name": "Scav Bunker"
+      },
+      {
+        "X": -18.0,
+        "Z": 50.0,
+        "Name": "Blue Containers"
+      },
+      {
+        "X": -45.5,
+        "Z": 61.0,
+        "Name": "Wood Room"
+      },
+      {
+        "X": 68.25,
+        "Z": -20.0,
+        "Name": "Glass Hall"
+      },
+      {
+        "X": 56.0,
+        "Z": 5.0,
+        "Name": "Boilers"
+      },
+      {
+        "X": 41.0,
+        "Z": -11.0,
+        "Name": "Pumping Station"
+      },
+      {
+        "X": 44.0,
+        "Z": -36.0,
+        "Name": "East Halls"
+      },
+      {
+        "X": 66.0,
+        "Z": -42.0,
+        "Name": "Forklifts"
+      },
+      {
+        "X": 18.0,
+        "Z": 4.0,
+        "Name": "Rafters"
+      }
+    ],
+    "Id": "factory"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -433.0,
+            "MaxZ": 426.0,
+            "MinHeight": -1000.0,
+            "MinZ": -442.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 598.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 426.0,
+          "MinX": -433.0,
+          "MaxX": 598.0,
+          "MinZ": -442.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "interchange/Ground_Level.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": -222.0,
+            "MaxZ": 218.0,
+            "MinHeight": 25.0,
+            "MinZ": -327.0,
+            "MaxHeight": 34.0,
+            "MaxX": 120.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 426.0,
+          "MinX": -433.0,
+          "MaxX": 598.0,
+          "MinZ": -442.0
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "interchange/First_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": -222.0,
+            "MaxZ": 218.0,
+            "MinHeight": 34.0,
+            "MinZ": -327.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 120.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 426.0,
+          "MinX": -433.0,
+          "MaxX": 598.0,
+          "MinZ": -442.0
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "interchange/Second_Floor.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "interchange",
+    "Maps": [
+      "interchange"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": -186.4,
+        "Z": -318.7,
+        "Name": "Power Station"
+      },
+      {
+        "X": 155.0,
+        "Z": -253.0,
+        "Name": "Go Kart"
+      },
+      {
+        "X": 158.0,
+        "Z": -78.5,
+        "Name": "Four Camp"
+      },
+      {
+        "X": 68.2,
+        "Z": 312.9,
+        "Name": "Cargo Containers"
+      },
+      {
+        "X": -260.2,
+        "Z": 123.8,
+        "Name": "Wall Break"
+      },
+      {
+        "X": -175.5,
+        "Z": 145.1,
+        "Name": "Ramps"
+      },
+      {
+        "X": 202.3,
+        "Z": 219.4,
+        "Name": "Oli Tower"
+      },
+      {
+        "X": 46.5,
+        "Z": -358.5,
+        "Name": "Idea Tower"
+      },
+      {
+        "X": 263.2,
+        "Z": -11.1,
+        "Name": "Scav Camp"
+      },
+      {
+        "X": 373.5,
+        "Z": -391.2,
+        "Name": "Highway Construction"
+      },
+      {
+        "X": 33.0,
+        "Z": -222.0,
+        "Name": "Garage A"
+      },
+      {
+        "X": 47.0,
+        "Z": -112.0,
+        "Name": "Garage B"
+      },
+      {
+        "X": 0.0,
+        "Z": 47.0,
+        "Name": "Garage C"
+      },
+      {
+        "X": 20.0,
+        "Z": 138.0,
+        "Name": "Garage D"
+      },
+      {
+        "X": -34.0,
+        "Z": -235.0,
+        "Name": "IDEA"
+      },
+      {
+        "X": -115.0,
+        "Z": -45.0,
+        "Name": "Goshan"
+      },
+      {
+        "X": -28.0,
+        "Z": 140.0,
+        "Name": "OLI"
+      },
+      {
+        "X": 87.0,
+        "Z": -165.0,
+        "Name": "Nortex"
+      },
+      {
+        "X": 60.0,
+        "Z": -152.0,
+        "Name": "TRend"
+      },
+      {
+        "X": 69.5,
+        "Z": -134.0,
+        "Name": "Mode7"
+      },
+      {
+        "X": 19.0,
+        "Z": -129.0,
+        "Name": "TTS"
+      },
+      {
+        "X": -38.0,
+        "Z": -129.0,
+        "Name": "Book Store"
+      },
+      {
+        "X": 91.0,
+        "Z": -119.0,
+        "Name": "Dino Clothes"
+      },
+      {
+        "X": 18.0,
+        "Z": -103.0,
+        "Name": "EMERCOM"
+      },
+      {
+        "X": -28.0,
+        "Z": -103.0,
+        "Name": "Kostin"
+      },
+      {
+        "X": -65.0,
+        "Z": -103.0,
+        "Name": "Bizarro"
+      },
+      {
+        "X": 92.0,
+        "Z": -87.0,
+        "Name": "Spiel"
+      },
+      {
+        "X": -18.0,
+        "Z": -87.0,
+        "Name": "Voyage"
+      },
+      {
+        "X": 57.0,
+        "Z": -66.0,
+        "Name": "Viking"
+      },
+      {
+        "X": 13.0,
+        "Z": -66.0,
+        "Name": "Mantis"
+      },
+      {
+        "X": -18.0,
+        "Z": -72.0,
+        "Name": "German"
+      },
+      {
+        "X": 57.0,
+        "Z": -32.0,
+        "Name": "The National"
+      },
+      {
+        "X": 13.0,
+        "Z": -32.0,
+        "Name": "Brutal"
+      },
+      {
+        "X": -18.0,
+        "Z": -25.0,
+        "Name": "Kiba"
+      },
+      {
+        "X": -34.0,
+        "Z": -20.0,
+        "Name": "Pretty Lights"
+      },
+      {
+        "X": 92.0,
+        "Z": -18.0,
+        "Name": "Telespot"
+      },
+      {
+        "X": 62.0,
+        "Z": -12.0,
+        "Name": "Revis"
+      },
+      {
+        "X": 19.0,
+        "Z": -6.0,
+        "Name": "ADIK"
+      },
+      {
+        "X": -28.0,
+        "Z": 0.5,
+        "Name": "Generic"
+      },
+      {
+        "X": 92.0,
+        "Z": 15.0,
+        "Name": "Top Brand"
+      },
+      {
+        "X": 61.0,
+        "Z": 15.0,
+        "Name": "Sports"
+      },
+      {
+        "X": 70.0,
+        "Z": 32.0,
+        "Name": "Yushka"
+      },
+      {
+        "X": 19.5,
+        "Z": 26.0,
+        "Name": "Rasmussen"
+      },
+      {
+        "X": -37.0,
+        "Z": 26.0,
+        "Name": "Avokado"
+      },
+      {
+        "X": 91.0,
+        "Z": 55.0,
+        "Name": "Boots 4 Life"
+      },
+      {
+        "X": 61.0,
+        "Z": 50.0,
+        "Name": "Texho"
+      },
+      {
+        "X": 6.0,
+        "Z": 49.0,
+        "Name": "Dom"
+      },
+      {
+        "X": 38.0,
+        "Z": -170.0,
+        "Name": "Father & Sons"
+      },
+      {
+        "X": 69.0,
+        "Z": -150.0,
+        "Name": "Tarkovstar"
+      },
+      {
+        "X": 26.0,
+        "Z": -149.0,
+        "Name": "Eastland"
+      },
+      {
+        "X": 71.0,
+        "Z": -130.0,
+        "Name": "Arena"
+      },
+      {
+        "X": 54.0,
+        "Z": -128.0,
+        "Name": "ТАРЗДРАВ"
+      },
+      {
+        "X": 20.0,
+        "Z": -128.0,
+        "Name": "МЕБЕЛЬ МК"
+      },
+      {
+        "X": 69.0,
+        "Z": -116.0,
+        "Name": "Intourist"
+      },
+      {
+        "X": -27.0,
+        "Z": -103.0,
+        "Name": "Burger Spot"
+      },
+      {
+        "X": 70.0,
+        "Z": -94.0,
+        "Name": "FCK"
+      },
+      {
+        "X": 70.0,
+        "Z": -87.0,
+        "Name": "McDaniels"
+      },
+      {
+        "X": 64.0,
+        "Z": -69.0,
+        "Name": "Tarducks"
+      },
+      {
+        "X": 43.0,
+        "Z": -69.0,
+        "Name": "Coffee Joy"
+      },
+      {
+        "X": 15.0,
+        "Z": -74.0,
+        "Name": "Jacob & Jacob"
+      },
+      {
+        "X": -34.0,
+        "Z": -79.0,
+        "Name": "ПУШКИН"
+      },
+      {
+        "X": 64.0,
+        "Z": -34.0,
+        "Name": "Sushi Huyushi"
+      },
+      {
+        "X": -17.0,
+        "Z": -32.0,
+        "Name": "Underway"
+      },
+      {
+        "X": 67.0,
+        "Z": -23.5,
+        "Name": "Burger House"
+      },
+      {
+        "X": -34.0,
+        "Z": -24.0,
+        "Name": "Philly Cute"
+      },
+      {
+        "X": 67.0,
+        "Z": -16.0,
+        "Name": "Shiccos"
+      },
+      {
+        "X": 17.0,
+        "Z": 0.0,
+        "Name": "МУЗЕЙ ИСТОРИИ"
+      },
+      {
+        "X": 92.0,
+        "Z": 17.0,
+        "Name": "Papillon"
+      },
+      {
+        "X": 58.0,
+        "Z": 13.0,
+        "Name": "ЗАКРЫТО НА РЕМОНТ"
+      },
+      {
+        "X": 70.0,
+        "Z": 27.0,
+        "Name": "НА-СВЯЗИ"
+      },
+      {
+        "X": 54.0,
+        "Z": 24.0,
+        "Name": "СКОРО ОТКРЫТИЕ"
+      },
+      {
+        "X": 19.0,
+        "Z": 26.0,
+        "Name": "Figaro"
+      },
+      {
+        "X": 71.0,
+        "Z": 47.0,
+        "Name": "АПТЕКА"
+      },
+      {
+        "X": 53.0,
+        "Z": 47.0,
+        "Name": "SARA"
+      },
+      {
+        "X": 26.0,
+        "Z": 46.0,
+        "Name": "Urban Clothes"
+      },
+      {
+        "X": 91.0,
+        "Z": 54.0,
+        "Name": "TECHLIGHT"
+      },
+      {
+        "X": 39.0,
+        "Z": 67.0,
+        "Name": "Fashion Store"
+      }
+    ],
+    "Id": "interchange"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -545.0,
+            "MaxZ": 725.0,
+            "MinHeight": -1000.0,
+            "MinZ": -998.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 515.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 725.0,
+          "MinX": -545.0,
+          "MaxX": 515.0,
+          "MinZ": -998.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "lighthouse/Ground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "lighthouse",
+    "Maps": [
+      "lighthouse"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": -30.0,
+        "Z": -882.0,
+        "Name": "Train Yard"
+      },
+      {
+        "X": -120.0,
+        "Z": -841.0,
+        "Name": "Drug Lab"
+      },
+      {
+        "X": -65.0,
+        "Z": -600.0,
+        "Name": "Water Treatment"
+      },
+      {
+        "X": 40.0,
+        "Z": -618.0,
+        "Name": "Plant 1"
+      },
+      {
+        "X": -97.0,
+        "Z": -737.0,
+        "Name": "Plant 2"
+      },
+      {
+        "X": -189.0,
+        "Z": -665.0,
+        "Name": "Plant 3"
+      },
+      {
+        "X": -182.0,
+        "Z": -552.0,
+        "Name": "Pipes"
+      },
+      {
+        "X": 18.0,
+        "Z": -453.0,
+        "Name": "Gunner Nest"
+      },
+      {
+        "X": -177.0,
+        "Z": -356.0,
+        "Name": "Island"
+      },
+      {
+        "X": -278.0,
+        "Z": -323.0,
+        "Name": "Cabins"
+      },
+      {
+        "X": -162.0,
+        "Z": -225.0,
+        "Name": "Cottages"
+      },
+      {
+        "X": -55.0,
+        "Z": -288.0,
+        "Name": "Convenience"
+      },
+      {
+        "X": -75.0,
+        "Z": -284.0,
+        "Name": "Red Brick"
+      },
+      {
+        "X": -151.0,
+        "Z": -243.0,
+        "Name": "Hillside"
+      },
+      {
+        "X": 125.0,
+        "Z": -153.0,
+        "Name": "Boathouses"
+      },
+      {
+        "X": 62.0,
+        "Z": -60.0,
+        "Name": "Dead Tree"
+      },
+      {
+        "X": 0.0,
+        "Z": -188.0,
+        "Name": "Construction"
+      },
+      {
+        "X": -107.0,
+        "Z": -53.0,
+        "Name": "Pikes Peak Resort"
+      },
+      {
+        "X": -133.0,
+        "Z": 100.0,
+        "Name": "Grand Chalet"
+      },
+      {
+        "X": -70.0,
+        "Z": 129.0,
+        "Name": "Tennis Court"
+      },
+      {
+        "X": 382.0,
+        "Z": 496.0,
+        "Name": "Lightkeeper Island"
+      },
+      {
+        "X": -125.0,
+        "Z": 296.0,
+        "Name": "Crash Site"
+      }
+    ],
+    "Id": "lighthouse"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -303.0,
+            "MaxZ": 244.0,
+            "MinHeight": -7.0,
+            "MinZ": -293.0,
+            "MaxHeight": 10000.0,
+            "MaxX": 289.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 272.0,
+          "MinX": -303.0,
+          "MaxX": 289.0,
+          "MinZ": -274.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "reserve/Ground_Level.svg"
+      },
+      {
+        "Level": -1,
+        "Volumes": [
+          {
+            "MinX": 18.0,
+            "MaxZ": -33.0,
+            "MinHeight": -10000.0,
+            "MinZ": -208.0,
+            "MaxHeight": -7.27,
+            "MaxX": 128.0
+          },
+          {
+            "MinX": -176.0,
+            "MaxZ": 127.0,
+            "MinHeight": -10000.0,
+            "MinZ": -42.0,
+            "MaxHeight": -7.27,
+            "MaxX": -46.0
+          },
+          {
+            "MinX": -124.0,
+            "MaxZ": 189.0,
+            "MinHeight": -10000.0,
+            "MinZ": 124.0,
+            "MaxHeight": -12.0,
+            "MaxX": -40.0
+          },
+          {
+            "MinX": -65.0,
+            "MaxZ": 189.0,
+            "MinHeight": -10000.0,
+            "MinZ": 173.0,
+            "MaxHeight": 18.0,
+            "MaxX": 23.0
+          },
+          {
+            "MinX": 19.0,
+            "MaxZ": -149.0,
+            "MinHeight": -7.27,
+            "MinZ": -196.0,
+            "MaxHeight": -3.2,
+            "MaxX": 74.0
+          },
+          {
+            "MinX": -274.0,
+            "MaxZ": -53.0,
+            "MinHeight": -11.0,
+            "MinZ": -79.0,
+            "MaxHeight": -4.6,
+            "MaxX": -246.0
+          },
+          {
+            "MinX": 126.0,
+            "MaxZ": 45.0,
+            "MinHeight": -11.0,
+            "MinZ": -26.0,
+            "MaxHeight": -4.6,
+            "MaxX": 238.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 272.0,
+          "MinX": -303.0,
+          "MaxX": 289.0,
+          "MinZ": -274.0
+        },
+        "Name": "Bunkers",
+        "ImagePath": "reserve/Bunkers.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "reserve",
+    "Maps": [
+      "rezervbase"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": 28.0,
+        "Z": -102.0,
+        "Name": "K Buildings"
+      },
+      {
+        "X": -25.0,
+        "Z": 180.0,
+        "Name": "White Queen"
+      },
+      {
+        "X": -104.0,
+        "Z": 93.0,
+        "Name": "White Pawn"
+      },
+      {
+        "X": -140.0,
+        "Z": -14.5,
+        "Name": "Black Bishop"
+      },
+      {
+        "X": -67.0,
+        "Z": -30.0,
+        "Name": "White Bishop"
+      },
+      {
+        "X": -49.5,
+        "Z": 15.5,
+        "Name": "White King"
+      },
+      {
+        "X": 14.5,
+        "Z": -10.8,
+        "Name": "Black Knight"
+      },
+      {
+        "X": 82.2,
+        "Z": -30.2,
+        "Name": "White Knight"
+      },
+      {
+        "X": 149.0,
+        "Z": -124.0,
+        "Name": "White Rook"
+      },
+      {
+        "X": 161.0,
+        "Z": -149.0,
+        "Name": "Train Station"
+      },
+      {
+        "X": -165.0,
+        "Z": 57.0,
+        "Name": "Black Pawn"
+      },
+      {
+        "X": 167.0,
+        "Z": -222.0,
+        "Name": "Barracks"
+      },
+      {
+        "X": -220.0,
+        "Z": -13.0,
+        "Name": "E1 Bunkers"
+      },
+      {
+        "X": 173.0,
+        "Z": -3.0,
+        "Name": "E2 Bunkers"
+      },
+      {
+        "X": 80.0,
+        "Z": -167.0,
+        "Name": "д - Warehouse Bunkers"
+      },
+      {
+        "X": 96.0,
+        "Z": 30.0,
+        "Name": "Garage"
+      },
+      {
+        "X": 55.5,
+        "Z": 60.6,
+        "Name": "Mechanic"
+      },
+      {
+        "X": 29.7,
+        "Z": 29.5,
+        "Name": "Gas Station"
+      },
+      {
+        "X": -31.0,
+        "Z": -150.0,
+        "Name": "Shipping Yard"
+      },
+      {
+        "X": -1.0,
+        "Z": -71.0,
+        "Name": "K1"
+      },
+      {
+        "X": 66.0,
+        "Z": -90.0,
+        "Name": "K2"
+      },
+      {
+        "X": -5.5,
+        "Z": -94.0,
+        "Name": "K3"
+      },
+      {
+        "X": 60.0,
+        "Z": -112.0,
+        "Name": "K4"
+      },
+      {
+        "X": -10.5,
+        "Z": -115.0,
+        "Name": "K5"
+      },
+      {
+        "X": 54.0,
+        "Z": -132.0,
+        "Name": "K6"
+      },
+      {
+        "X": -8.5,
+        "Z": 175.0,
+        "Name": "Dome"
+      },
+      {
+        "X": -120.0,
+        "Z": 37.0,
+        "Name": "Tarmac"
+      }
+    ],
+    "Id": "reserve"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -1056.0,
+            "MaxZ": 618.0,
+            "MinHeight": -1000.0,
+            "MinZ": -415.0,
+            "MaxHeight": -1.0,
+            "MaxX": 504.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 618.0,
+          "MinX": -1056.0,
+          "MaxX": 504.0,
+          "MinZ": -415.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "shoreline/Ground_Level.svg"
+      },
+      {
+        "Level": 1,
+        "Volumes": [
+          {
+            "MinX": -1056.0,
+            "MaxZ": 618.0,
+            "MinHeight": -1.0,
+            "MinZ": -415.0,
+            "MaxHeight": 2.0,
+            "MaxX": 504.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 618.0,
+          "MinX": -1056.0,
+          "MaxX": 504.0,
+          "MinZ": -415.0
+        },
+        "Name": "2nd Floor",
+        "ImagePath": "shoreline/Second_Floor.svg"
+      },
+      {
+        "Level": 2,
+        "Volumes": [
+          {
+            "MinX": -1056.0,
+            "MaxZ": 618.0,
+            "MinHeight": 2.0,
+            "MinZ": -415.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 504.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 618.0,
+          "MinX": -1056.0,
+          "MaxX": 504.0,
+          "MinZ": -415.0
+        },
+        "Name": "3rd Floor",
+        "ImagePath": "shoreline/Third_Floor.svg"
+      },
+      {
+        "Level": -1,
+        "Volumes": [
+          {
+            "MinX": -237.0,
+            "MaxZ": -68.0,
+            "MinHeight": -1000.0,
+            "MinZ": -104.0,
+            "MaxHeight": -5.0,
+            "MaxX": -137.0
+          },
+          {
+            "MinX": -268.0,
+            "MaxZ": -134.0,
+            "MinHeight": -1000.0,
+            "MinZ": -163.0,
+            "MaxHeight": -5.0,
+            "MaxX": -234.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 618.0,
+          "MinX": -1056.0,
+          "MaxX": 504.0,
+          "MinZ": -415.0
+        },
+        "Name": "Underground",
+        "ImagePath": "shoreline/Underground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "shoreline",
+    "Maps": [
+      "shoreline"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": -258.2,
+        "Z": -71.2,
+        "Name": "Resort"
+      },
+      {
+        "X": -215.8,
+        "Z": 178.4,
+        "Name": "Power Station"
+      },
+      {
+        "X": -189.3,
+        "Z": 420.0,
+        "Name": "Gas Station"
+      },
+      {
+        "X": -496.0,
+        "Z": 257.0,
+        "Name": "Weather Station"
+      },
+      {
+        "X": -708.9,
+        "Z": 93.91,
+        "Name": "Radio Tower"
+      },
+      {
+        "X": 326.0,
+        "Z": -118.5,
+        "Name": "Swamp"
+      },
+      {
+        "X": 418.4,
+        "Z": 118.0,
+        "Name": "Village"
+      },
+      {
+        "X": 288.0,
+        "Z": 144.0,
+        "Name": "Cabins"
+      },
+      {
+        "X": 128.0,
+        "Z": 93.0,
+        "Name": "Cottages"
+      },
+      {
+        "X": -355.0,
+        "Z": 188.0,
+        "Name": "Tank Bridge"
+      },
+      {
+        "X": -338.6,
+        "Z": 525.0,
+        "Name": "Pier"
+      },
+      {
+        "X": 216.0,
+        "Z": 424.0,
+        "Name": "Scav Island"
+      },
+      {
+        "X": -96.0,
+        "Z": -6.0,
+        "Name": "Bus Stop"
+      },
+      {
+        "X": 52.0,
+        "Z": 134.0,
+        "Name": "Construction"
+      },
+      {
+        "X": -153.0,
+        "Z": -290.0,
+        "Name": "Bunker"
+      },
+      {
+        "X": -625.0,
+        "Z": 484.0,
+        "Name": "Crane"
+      },
+      {
+        "X": -622.0,
+        "Z": -202.0,
+        "Name": "Scav Farm"
+      },
+      {
+        "X": -171.0,
+        "Z": -83.0,
+        "Name": "West Wing"
+      },
+      {
+        "X": -329.0,
+        "Z": -83.0,
+        "Name": "East Wing"
+      },
+      {
+        "X": -252.0,
+        "Z": -146.0,
+        "Name": "Admin"
+      }
+    ],
+    "Id": "shoreline"
+  },
+  {
+    "Floors": [
+      {
+        "Level": 0,
+        "Volumes": [
+          {
+            "MinX": -761.0,
+            "MaxZ": 442.0,
+            "MinHeight": -1000.0,
+            "MinZ": -914.0,
+            "MaxHeight": 1000.0,
+            "MaxX": 646.0
+          }
+        ],
+        "Bounds": {
+          "MaxZ": 442.0,
+          "MinX": -761.0,
+          "MaxX": 646.0,
+          "MinZ": -914.0
+        },
+        "Name": "Ground level",
+        "ImagePath": "woods/Ground_Level.svg"
+      }
+    ],
+    "Author": "Shebuka",
+    "Name": "woods",
+    "Maps": [
+      "woods"
+    ],
+    "DefaultLevel": 0,
+    "Rotation": 180,
+    "Landmarks": [
+      {
+        "X": 10.0,
+        "Z": -3.0,
+        "Name": "Sawmill"
+      },
+      {
+        "X": -485.0,
+        "Z": -390.0,
+        "Name": "Scav Town"
+      },
+      {
+        "X": -517.0,
+        "Z": -210.0,
+        "Name": "Old Sawmill"
+      },
+      {
+        "X": -80.0,
+        "Z": -680.0,
+        "Name": "Cultist Village"
+      },
+      {
+        "X": 290.0,
+        "Z": -475.0,
+        "Name": "USEC Camp"
+      },
+      {
+        "X": -188.0,
+        "Z": 235.0,
+        "Name": "Military Camp"
+      },
+      {
+        "X": -5.0,
+        "Z": -515.0,
+        "Name": "Ponds"
+      },
+      {
+        "X": -252.0,
+        "Z": -37.0,
+        "Name": "Crash Site"
+      },
+      {
+        "X": 239.0,
+        "Z": -65.0,
+        "Name": "Checkpoint"
+      },
+      {
+        "X": 244.0,
+        "Z": 125.0,
+        "Name": "Shack"
+      },
+      {
+        "X": -16.0,
+        "Z": -122.0,
+        "Name": "Lumber"
+      },
+      {
+        "X": -3.0,
+        "Z": -74.0,
+        "Name": "Cabins"
+      },
+      {
+        "X": -234.0,
+        "Z": 357.0,
+        "Name": "Bus Stop"
+      },
+      {
+        "X": -327.0,
+        "Z": 19.0,
+        "Name": "Jaeger's Camp"
+      },
+      {
+        "X": 85.0,
+        "Z": -147.0,
+        "Name": "Sniper Rock"
+      },
+      {
+        "X": 200.0,
+        "Z": -606.0,
+        "Name": "Convoy"
+      }
+    ],
+    "Id": "woods"
+  }
+]

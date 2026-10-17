@@ -55,6 +55,9 @@ internal static class ConfigValidation
             Chance(entry.Loose.ChancePercent, 90, path + ".Loose.ChancePercent");
             Chance(entry.Bots.ChancePercent, 90, path + ".Bots.ChancePercent");
             Chance(entry.Airdrops.ChancePercent, 100, path + ".Airdrops.ChancePercent");
+            entry.Airdrops.Types = Strings(entry.Airdrops.Types, path + ".Airdrops.Types")
+                .Select(type => AirdropTypes.All.FirstOrDefault(value => value.Equals(type, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidDataException($"{path}.Airdrops.Types contains an unknown crate type.")).ToList();
             entry.Static.MapChances = Chances(entry.Static.MapChances, path + ".Static.MapChances");
             entry.Loose.MapChances = Chances(entry.Loose.MapChances, path + ".Loose.MapChances");
             Require(Enum.IsDefined(entry.Schedule.Mode), $"{path}: invalid schedule mode.");

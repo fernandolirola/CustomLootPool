@@ -43,6 +43,8 @@ public class LootEntry
     /// <summary>Empty = every map</summary>
     public List<string> Maps { get; set; } = [];
 
+    internal bool AllowsMap(string? mapId) => Maps.Count == 0 || (mapId is not null && Maps.Contains(mapId, StringComparer.OrdinalIgnoreCase));
+
     public ScheduleSettings Schedule { get; set; } = new();
 
     /// <summary>One extra copy at a random loose loot spot every raid</summary>
@@ -118,6 +120,9 @@ public class BotLootSettings
 public class AirdropSettings
 {
     public bool Enabled { get; set; } = false;
+
+    /// <summary>Empty means all crate types, including crates added by other mods.</summary>
+    public List<string> Types { get; set; } = [];
 
     /// <summary>Chance (0-100%) that an airdrop crate contains one of this item</summary>
     public double ChancePercent { get; set; } = 10;

@@ -1,0 +1,258 @@
+@implements IAsyncDisposable
+@inject LootInjectionService Injection
+@inject HeatmapAssets MapAssets
+@inject IJSRuntime JS
+
+<div class="clp-atlas-backdrop">
+    <section class="clp-atlas spt-panel" role="dialog" aria-modal="true" aria-label="Loot heatmap" tabindex="-1" @onkeydown="KeyDown">
+        <header class="clp-atlas-head">
+            <div>
+                <MudText Typo="Typo.overline" Class="spt-kicker">Loot Atlas</MudText>
+                <MudText Typo="Typo.h5" Class="spt-title">@(Entry.Name ?? "Item heatmap")</MudText>
+                <MudText Typo="Typo.body2" Class="spt-muted mt-2">Explore where your item can appear.</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="Close" aria-label="Close heatmap" />
+        </header>
+        <div class="clp-atlas-layout">
+            <aside class="clp-atlas-sidebar">
+                <MudSelect T="string" Label="Map" Value="@mapId" ValueChanged="ChangeMap" Disabled="@busy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" PopoverClass="clp-atlas-popover">
+                    @foreach (var map in MapIds)
+                    {
+                        <MudSelectItem T="string" Value="@map">@ItemCatalogService.MapName(map)</MudSelectItem>
+                    }
+                </MudSelect>
+                <div class="clp-atlas-modes">
+                    <MudButton Variant="@(sampled ? Variant.Text : Variant.Filled)" Color="Color.Warning" Size="Size.Small" Disabled="@(busy || Artwork is null)" OnClick="ShowEligible">Eligible spots</MudButton>
+                    <MudButton Variant="@(sampled ? Variant.Filled : Variant.Text)" Color="Color.Warning" Size="Size.Small" Disabled="@(busy || Artwork is null)" OnClick="RunSample">Simulate raids</MudButton>
+                </div>
+                <MudText Typo="Typo.caption" Class="spt-muted my-3">@(sampled ? $"Observed item locations across {completedRaids} simulated raids. Colors show average items per raid." : "Brighter areas have more eligible spots. Density is not spawn probability.")</MudText>
+                <MudSelect T="int" Label="Sample size" @bind-Value="sampleRaids" Disabled="@busy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" PopoverClass="clp-atlas-popover">
+                    <MudSelectItem T="int" Value="25">25 raids</MudSelectItem>
+                    <MudSelectItem T="int" Value="100">100 raids</MudSelectItem>
+                </MudSelect>
+                @if (sampled)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small" FullWidth="true" OnClick="RunSample" Disabled="@busy" Class="mt-2">Run a new sample</MudButton>
+                }
+                <div class="clp-atlas-toggles">
+                    <MudCheckBox T="bool" @bind-Value="containers" @bind-Value:after="Rebuild" Label="Containers" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                    <MudCheckBox T="bool" @bind-Value="loose" @bind-Value:after="Rebuild" Label="Loose loot" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                    <MudCheckBox T="bool" @bind-Value="showPoints" Label="Individual locations" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                    <MudCheckBox T="bool" @bind-Value="showLabels" Label="Landmark labels" Color="Color.Warning" Size="Size.Small" Dense="true" />
+                </div>
+                <div class="clp-atlas-stat">
+                    <MudText Typo="Typo.h4" Class="spt-accent">@N(totalWeight)</MudText>
+                    <MudText Typo="Typo.caption" Class="spt-muted">@(sampled ? "items / raid on this floor" : "eligible locations on this floor")</MudText>
+                </div>
+                <MudText Typo="Typo.subtitle2">Densest cells <span class="spt-muted">· 80 × 80 m</span></MudText>
+                @if (ranked.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Class="spt-muted">No locations in this view.</MudText>
+                }
+                @foreach (var cell in ranked.Take(4))
+                {
+                    <div class="clp-atlas-rank">
+                        <span>@AreaName(cell.X, cell.Z)<small class="spt-muted spt-mono">X @Math.Round(cell.X) · Z @Math.Round(cell.Z)</small></span>
+                        <b class="spt-accent">@N(cell.Weight / Divisor)</b>
+                    </div>
+                }
+                <MudText Typo="Typo.caption" Class="spt-muted mt-3">Landmarks name the nearest label, not a defined region.</MudText>
+                @if (data.MissingContainers > 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">@data.MissingContainers @(sampled ? "container item occurrences" : "eligible containers") have no coordinates and are not plotted.</MudAlert>
+                }
+            </aside>
+            <div class="clp-atlas-main">
+                <div class="clp-atlas-toolbar">
+                    <MudSelect T="string" Label="Floor" Value="@floorName" ValueChanged="ChangeFloor" Disabled="@busy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="clp-atlas-floor" PopoverClass="clp-atlas-popover">
+                        <MudSelectItem T="string" Value="@string.Empty">All floors</MudSelectItem>
+                        @if (Artwork is { } art)
+                        {
+                            @foreach (var floor in art.Floors.OrderBy(f => f.Level))
+                            {
+                                <MudSelectItem T="string" Value="@floor.Name">@floor.Name</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@(sampled ? "Simulated frequency" : "Location density")</MudChip>
+                </div>
+                <div class="clp-atlas-map">
+                    @if (projection is not null)
+                    {
+                        <svg @ref="svg" viewBox="@($"0 0 1000 {N(projection.Height)}")" class="clp-atlas-svg" role="img" aria-label="Interactive loot heatmap, scroll to zoom and drag to pan">
+                            <defs>
+                                <radialGradient id="@(uid)-heat">
+                                    <stop offset="0%" stop-color="#fff1a0" stop-opacity=".95" />
+                                    <stop offset="28%" stop-color="#ffb14d" stop-opacity=".8" />
+                                    <stop offset="57%" stop-color="#ee6248" stop-opacity=".5" />
+                                    <stop offset="100%" stop-color="#ee6248" stop-opacity="0" />
+                                </radialGradient>
+                            </defs>
+                            <rect width="1000" height="@N(projection.Height)" fill="var(--spt-bg-soft)" />
+                            <image href="@image" width="1000" height="@N(projection.Height)" preserveAspectRatio="none" opacity=".8" />
+                            @foreach (var cell in cells)
+                            {
+                                var p = projection.Project(cell.X, cell.Z);
+                                <circle cx="@N(p.X)" cy="@N(p.Y)" r="@N(projection.Radius(48))" fill="@($"url(#{uid}-heat)")" opacity="@N(.25 + .75 * cell.Weight / maxCell)">
+                                    <title>@AreaName(cell.X, cell.Z) · @N(cell.Weight / Divisor) @(sampled ? "items / raid" : "locations") in this 40 m cell</title>
+                                </circle>
+                            }
+                            @if (showPoints)
+                            {
+                                @foreach (var point in visible)
+                                {
+                                    var p = projection.Project(point.X, point.Z);
+                                    <circle cx="@N(p.X)" cy="@N(p.Y)" r="2.2" fill="@(point.Source == "container" ? "var(--spt-info)" : "#94efb3")" stroke="var(--spt-bg)" stroke-width=".7">
+                                        <title>@point.Name · @N(point.Weight / Divisor) @(sampled ? "items / raid" : "location") · X @N(point.X), Y @N(point.Y), Z @N(point.Z)</title>
+                                    </circle>
+                                }
+                            }
+                            @if (showLabels && Artwork is { } labelMap)
+                            {
+                                @foreach (var label in labelMap.Landmarks)
+                                {
+                                    var p = projection.Project(label.X, label.Z);
+                                    <g class="clp-atlas-label" transform="@($"translate({N(p.X)} {N(p.Y)})")"><text text-anchor="middle">@label.Name</text></g>
+                                }
+                            }
+                        </svg>
+                    }
+                    <div class="clp-atlas-map-tools">
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" OnClick="ResetView">Reset view</MudButton>
+                        <MudText Typo="Typo.caption" Class="spt-muted">Scroll to zoom · drag to pan</MudText>
+                    </div>
+                    @if (busy)
+                    {
+                        <div class="clp-atlas-loading">
+                            <MudProgressCircular Indeterminate="true" Color="Color.Warning" />
+                            <MudText Typo="Typo.body2">@status</MudText>
+                            @if (operation is not null)
+                            {
+                                <MudButton Color="Color.Warning" OnClick="Cancel">Cancel</MudButton>
+                            }
+                        </div>
+                    }
+                    @if (!busy && error is not null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="clp-atlas-empty">@error</MudAlert>
+                    }
+                    else if (!busy && visible.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="clp-atlas-empty">@(data.MissingContainers > 0 ? "SPT does not provide coordinates for these containers. Loose-loot locations can be mapped." : sampled ? "No occurrences in this sample. Try a larger sample or another floor." : "No eligible locations for these filters.")</MudAlert>
+                    }
+                </div>
+                <footer class="clp-atlas-footer">
+                    <div class="clp-atlas-legend"><span>Lower</span><i></i><span>Higher</span></div>
+                    <span>Relative density within this view</span>
+                </footer>
+                <MudText Typo="Typo.caption" Class="spt-muted clp-atlas-disclosure">
+                    Artwork: @(Artwork?.Author ?? "Tarkov.dev contributors") via <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer">Tarkov.dev SVG Maps</a>, <a href="/CustomLootPool/maps/LICENSE-CC-BY-NC-SA-4.0.md" target="_blank">CC BY-NC-SA 4.0</a>. Floor views were extracted.
+                    @(floorName.Length == 0 ? "All floors overlap. " : "")@($"{data.MissingCoordinates} locations/occurrences lack coordinates; {outside} fall outside the map bounds. ")
+                    Custom map variants may differ. Bots and airdrops are excluded. Eligible spots use reference positions; simulations use generated positions.
+                </MudText>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public LootEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public LootPoolConfig Context { get; set; } = null!;
+    [Parameter] public EventCallback OnClose { get; set; }
+    private readonly string uid = "heat" + Guid.NewGuid().ToString("N");
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? operation;
+    private ElementReference svg;
+    private IJSObjectReference? module;
+    private bool attach;
+    private string mapId = "", floorName = "", status = "Loading locations…";
+    private string? error, image;
+    private bool busy, sampled, containers = true, loose = true, showPoints = true, showLabels = true;
+    private int sampleRaids = 25, completedRaids, outside;
+    private double totalWeight, maxCell = 1;
+    private HeatSample data = new([]);
+    private HeatProjection? projection;
+    private MapArtwork? Artwork;
+    private List<HeatPoint> visible = [];
+    private List<HeatCell> cells = [], ranked = [];
+    private IEnumerable<string> MapIds => Injection.Maps.Keys.Where(Entry.AllowsMap).OrderBy(m => ItemCatalogService.MapName(m));
+    private MapFloor? Floor => Artwork?.Floors.FirstOrDefault(f => f.Name == floorName);
+    private MapFloor? ImageFloor => Floor ?? Artwork?.DefaultFloor;
+    private double Divisor => sampled ? completedRaids : 1;
+    private static string N(double v) => HeatmapGrid.Number(v);
+    protected override async Task OnInitializedAsync(){ mapId = MapIds.FirstOrDefault() ?? ""; await LoadMap(); }
+    protected override async Task OnAfterRenderAsync(bool first)
+    {
+        if (attach && !busy && projection is not null)
+        {
+            attach = false;
+            try { module ??= await JS.InvokeAsync<IJSObjectReference>("import", "/CustomLootPool/js/heatmap.js"); await module.InvokeVoidAsync("attach", svg, projection.Height); }
+            catch (JSDisconnectedException) { }
+        }
+    }
+    private async Task ChangeMap(string value){ mapId = value; await LoadMap(); }
+    private async Task LoadMap()
+    {
+        data = new([]); visible = []; cells = []; ranked = [];
+        totalWeight = 0; outside = 0; projection = null; image = null; sampled = false; error = null;
+        try { Artwork = MapAssets.FindMap(mapId); }
+        catch (Exception ex) { Artwork = null; error = "Map artwork could not be loaded: " + ex.Message; return; }
+        if (Artwork is null) { error = "Tarkov.dev SVG artwork is not available for this map in this release."; return; }
+        floorName = Artwork.DefaultFloor?.Name ?? "";
+        LoadImage();
+        await ShowEligible();
+    }
+    private void ChangeFloor(string value){ floorName = value; LoadImage(); Rebuild(); }
+    private void LoadImage() => image = ImageFloor is { } floor ? MapAssets.ImageUrl(floor) : null;
+    private async Task ShowEligible()
+    {
+        if (Artwork is null) return;
+        busy = true; error = null; status = "Indexing eligible locations…";
+        try { data = await Injection.HeatLocations(Entry, mapId); sampled = false; Rebuild(); }
+        catch (Exception ex){ error = "Could not load locations: " + ex.Message; }
+        finally { busy = false; }
+    }
+    private async Task RunSample()
+    {
+        if (Artwork is null) return;
+        busy = true; error = null; status = $"Simulating {sampleRaids} raids…";
+        using var pending = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        operation = pending;
+        try
+        {
+            var results = await Injection.Simulate(Entry, sampleRaids, Context.CompensateLootMultipliers, ct: pending.Token, context: Context, spatialMap: mapId);
+            var result = results.SingleOrDefault() ?? throw new InvalidOperationException("This map is unavailable.");
+            if (result.Error is not null) throw new InvalidOperationException(result.Error);
+            data = result.Spatial ?? new([]); completedRaids = result.Raids; sampled = true; Rebuild();
+        }
+        catch (OperationCanceledException){ error = "Sample cancelled. The previous view is retained."; }
+        catch (Exception ex){ error = "Simulation failed: " + ex.Message; }
+        finally { operation = null; busy = false; attach = true; }
+    }
+    private void Rebuild()
+    {
+        var all = data.Points.Where(p => p.Source == "container" ? containers : loose).ToList();
+        if (image is null) { projection = null; error = "Map artwork is missing. Reinstall the complete mod ZIP."; return; }
+        var bounds = ImageFloor?.Bounds;
+        if (bounds is null) { projection = null; return; }
+        projection = new(bounds.MinX, bounds.MinZ, bounds.MaxX, bounds.MaxZ, Artwork?.Rotation ?? 0);
+        outside = all.Count(p => p.X < bounds.MinX || p.X > bounds.MaxX || p.Z < bounds.MinZ || p.Z > bounds.MaxZ);
+        visible = all.Where(p => p.X >= bounds.MinX && p.X <= bounds.MaxX && p.Z >= bounds.MinZ && p.Z <= bounds.MaxZ && (floorName.Length == 0 || Artwork?.FloorFor(p) == floorName)).ToList();
+        cells = HeatmapGrid.Aggregate(visible, 40); ranked = HeatmapGrid.Aggregate(visible, 80);
+        maxCell = cells.Select(c => c.Weight).DefaultIfEmpty(1).Max(); totalWeight = visible.Sum(p => p.Weight) / Divisor; attach = true;
+    }
+    private string AreaName(double x, double z)
+    {
+        var near = Artwork?.Landmarks.MinBy(l => Math.Pow(l.X - x, 2) + Math.Pow(l.Z - z, 2));
+        return near is not null ? "Near " + near.Name : "Coordinate cell";
+    }
+    private void Cancel() => operation?.Cancel();
+    private async Task ResetView(){ if(module is not null) await module.InvokeVoidAsync("reset", svg); }
+    private async Task Close(){ lifetime.Cancel(); await OnClose.InvokeAsync(); }
+    private async Task KeyDown(KeyboardEventArgs e){ if(e.Key == "Escape") await Close(); }
+    public async ValueTask DisposeAsync()
+    {
+        lifetime.Cancel(); operation?.Cancel(); lifetime.Dispose();
+        if(module is not null){ try{await module.InvokeVoidAsync("detach", svg); await module.DisposeAsync();}catch(JSDisconnectedException){} }
+    }
+}

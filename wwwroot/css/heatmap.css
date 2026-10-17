@@ -1,0 +1,162 @@
+.clp-atlas-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, .65);
+}
+.clp-atlas {
+    display: flex;
+    flex-direction: column;
+    width: min(1480px, 100%);
+    height: 94vh;
+    overflow: hidden;
+    background: var(--spt-bg-soft);
+    color: var(--spt-text);
+    font-family: var(--spt-font);
+    outline: none;
+}
+.clp-atlas-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--spt-border);
+}
+.clp-atlas-layout {
+    display: grid;
+    flex: 1;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 0;
+}
+.clp-atlas-sidebar {
+    overflow: auto;
+    padding: 16px 20px;
+    border-right: 1px solid var(--spt-border);
+}
+.clp-atlas-modes {
+    display: flex;
+    gap: 4px;
+    margin-top: 16px;
+}
+.clp-atlas-modes > .mud-button-root { flex: 1; }
+.clp-atlas-toggles {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    padding-block: 8px;
+    border-block: 1px solid var(--spt-border);
+}
+.clp-atlas-stat { margin: 16px 0; }
+.clp-atlas-rank {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--spt-border);
+    font-size: .8rem;
+}
+.clp-atlas-rank small { display: block; font-size: .7rem; }
+.clp-atlas-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 16px 20px;
+}
+.clp-atlas-toolbar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.clp-atlas-floor { flex: 0 1 240px; }
+.clp-atlas-popover { z-index: 1500 !important; }
+.clp-atlas-map {
+    position: relative;
+    flex: 1;
+    min-height: 200px;
+    overflow: hidden;
+    background: var(--spt-bg-soft);
+    border: 1px solid var(--spt-border);
+    border-radius: var(--spt-radius);
+}
+.clp-atlas-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+.clp-atlas-svg.dragging { cursor: grabbing; }
+.clp-atlas-label { pointer-events: none; }
+.clp-atlas-label text {
+    font-family: var(--spt-font);
+    font-size: 11px;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: var(--spt-bg);
+    stroke-width: 3px;
+    fill: var(--spt-text);
+}
+.clp-atlas-map-tools {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+}
+.clp-atlas-map-tools .mud-button-root {
+    pointer-events: auto;
+    background: var(--spt-bg-soft);
+}
+.clp-atlas-footer {
+    display: flex;
+    flex: none;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    color: var(--spt-text-muted);
+    font-size: .7rem;
+}
+.clp-atlas-legend { display: flex; align-items: center; gap: 8px; }
+.clp-atlas-legend i {
+    width: 120px;
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #643738, #ed6548, #ffb74c, #fff1a0);
+}
+.clp-atlas-disclosure { flex: none; margin-top: 12px; font-size: .65rem; }
+.clp-atlas-disclosure a { color: var(--spt-info); }
+.clp-atlas-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    background: var(--spt-surface-strong);
+}
+.clp-atlas-empty { position: absolute; left: 12%; right: 12%; top: 40%; }
+@media (max-width: 850px) {
+    .clp-atlas-backdrop { padding: 6px; }
+    .clp-atlas { height: auto; max-height: 98vh; display: block; overflow: auto; }
+    .clp-atlas-layout { display: block; }
+    .clp-atlas-head, .clp-atlas-main { padding: 12px; }
+    .clp-atlas-sidebar { max-height: 300px; border-right: 0; }
+    .clp-atlas-main { display: block; }
+    .clp-atlas-map { height: 50vh; min-height: 340px; }
+    .clp-atlas-toolbar, .clp-atlas-footer { flex-wrap: wrap; }
+}

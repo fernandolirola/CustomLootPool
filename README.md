@@ -11,6 +11,7 @@ Server mod for **SPT 4.1.6+ (4.1.x)** that lets you add any item to the map loot
 - **Similar items** mode: the item only goes where items of the same category already spawn. The page shows the loot pool, example items (hover one to see its chance) and the containers it reaches.
 - **Pick loot pools**: choose any categories (Electronics, Keys, Jewelry, the whole Barter items group...) and the item joins the pools where those items spawn.
 - **Simulate raids**: runs SPT's real loot generator and shows the average amount per raid on each map, even before saving.
+- **Loot Atlas**: interactive Tarkov.dev maps with floors, container and loose-loot layers, landmark labels, and density cells. Compare eligible locations with 25 or 100 simulated raids using the editor settings. Scroll to zoom and drag to pan.
 - **Lots of Loot aware**: shows how much each map's loot is multiplied and lets you choose: let your items grow with Lots of Loot, or keep the vanilla amount.
 - **More sources**: bot inventories (Scavs, PMCs, bosses and guards; backpack, pockets, vest) and airdrop crates.
 - **At least 1 per raid**: one guaranteed copy at a random loose loot spot every raid.
@@ -33,12 +34,41 @@ keep your existing `config.json` instead of overwriting it with the default.
 2. Open `https://127.0.0.1:6969/customlootpool` (or the server panel at `https://127.0.0.1:6969` → Custom Loot Pool).
 3. Add items, set maps / where / chance and click **Save**.
 
+### Loot Atlas
+
+Open **Loot Atlas** on an item card. **Eligible spots** counts possible physical
+locations, not spawn probability. **Simulate raids** measures average item
+occurrences per raid in a random sample. Zero observations do not establish
+that spawning is impossible. Bots and airdrops are excluded.
+
+Stock SPT stores placeholder zero coordinates for containers on many maps.
+Those containers and their simulated item occurrences are reported as unmapped
+and excluded from the heatmap, rather than creating a false hotspot at the origin.
+Loose-loot locations have usable coordinates. An item configured only for
+containers may therefore have no plotted locations.
+
+Source and floor filters apply to both the map and the ranked 80 m cells.
+Landmark names indicate the nearest label, not a region boundary. All-floor
+views overlap elevations; select a floor for useful building comparisons.
+
+The release includes Tarkov.dev SVG artwork for Customs, Factory, Ground Zero,
+Interchange, Lighthouse, Reserve, Shoreline, Streets and Woods. Other locations
+show an unavailable message. Custom map variants can differ from this artwork.
+There are no Dynamic Maps or QuestCodex dependencies or alternate map providers.
+
+Map artwork by Shebuka and the Tarkov.dev SVG Maps contributors is licensed
+separately under **CC BY-NC-SA 4.0**. Floor views are derived by extracting groups
+and retaining a faint ground layer. Full artwork license, source revisions,
+author links and modification details are in `wwwroot/maps/`. Map metadata
+comes from Tarkov.dev under its MIT license. The mod code remains MIT.
+`scripts/Import-TarkovMaps.ps1` reproduces the map import from pinned sources.
+
 ### Chances
 
 - **Containers**: chance that each item rolled inside a matching container is this item.
 - **Loose loot**: when a matching loot spot spawns, chance that it is this item.
 - **Bots**: chance that each item rolled into the chosen inventory slots is this item.
-- **Airdrops**: chance that a crate contains one of this item.
+- **Airdrops**: chance that an allowed crate contains one of this item. Select mixed supplies, weapons and armor, food and medical, barter supplies, or technical/event crates. Leave the selection empty to allow all types, including custom crates. This filter does not change airdrop frequency or the type SPT generates.
 
 Everything is stored in `config.json` next to the DLL.
 

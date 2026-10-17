@@ -120,7 +120,6 @@ public class ConfigService
         }
     }
 
-    public LootPoolConfig CloneConfig() => GetSnapshot().Config;
     public static T Clone<T>(T source) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions)!;
     public static string ExportEntries(IEnumerable<LootEntry> entries) => JsonSerializer.Serialize(new { Entries = entries }, JsonOptions);
     public static List<LootEntry> ImportEntries(string json)

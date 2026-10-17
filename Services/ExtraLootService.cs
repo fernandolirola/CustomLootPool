@@ -74,7 +74,7 @@ public class ExtraLootService(
         return cfg.Entries.Where(e =>
             e.Enabled
             && catalog.Exists(e.Tpl)
-            && (e.Maps.Count == 0 || (CurrentMap is not null && e.Maps.Contains(CurrentMap, StringComparer.OrdinalIgnoreCase)))
+            && e.AllowsMap(CurrentMap)
             && LootInjectionService.IsActiveNow(e.Schedule)
             && filter(e));
     }
@@ -110,9 +110,9 @@ public class ExtraLootService(
             .Where(pair => pair.Value > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
-    internal IEnumerable<List<Item>> AddAirdropLoot(IEnumerable<List<Item>> pool)
+    internal IEnumerable<List<Item>> AddAirdropLoot(IEnumerable<List<Item>> pool, string crateTemplate)
     {
-        var extra = Active(e => e.Airdrops.Enabled && e.Airdrops.ChancePercent > 0)
+        var extra = Active(e => e.Airdrops.Enabled && e.Airdrops.ChancePercent > 0 && AirdropTypes.Matches(e.Airdrops, crateTemplate))
             .Where(e => Random.Shared.NextDouble() * 100 < e.Airdrops.ChancePercent)
             .Select(e => CreateItem(new MongoId(e.Tpl)))
             .ToList();
@@ -179,11 +179,11 @@ public class ExtraLootService(
             typeof(AirdropService).GetMethod("GetLootThatFitsContainer", BindingFlags.Instance | BindingFlags.NonPublic);
 
         [PatchPrefix]
-        public static void Prefix(ref IEnumerable<List<Item>> crateLootPool)
+        public static void Prefix(Item container, ref IEnumerable<List<Item>> crateLootPool)
         {
             if (Instance is { } service)
             {
-                crateLootPool = service.AddAirdropLoot(crateLootPool);
+                crateLootPool = service.AddAirdropLoot(crateLootPool, container.Template.ToString());
             }
         }
     }

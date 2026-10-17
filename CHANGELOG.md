@@ -1,5 +1,18 @@
 # Changes
 
+## 1.3.0
+
+### Improvements
+
+- Add Loot Atlas with floor selection, container and loose-loot layers, landmark labels, zoom and pan, and ranked density cells.
+- Compare eligible locations with item frequency from 25 or 100 simulated raids using the current editor settings.
+- Include attributed Tarkov.dev SVG maps for nine maps, covering eleven SPT locations. Map artwork remains under its original license.
+- Clarify that preview spots refer to loose loot.
+- Use the SPT panel theme and native MudBlazor controls in Loot Atlas.
+- Remove unused helpers and redundant map-provider state, share preview selection rules, and simplify validation and styling.
+
+- Choose which airdrop crate types can contain each configured item. Existing configurations continue to allow every type.
+
 ## 1.2.1
 
 - Build with SPTushonka 4.1.6 packages, target SPT ~4.1.6 and align runtime metadata with Forge naming requirements.

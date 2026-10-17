@@ -51,6 +51,13 @@ public class RegressionTests
     }
 
     [Fact]
+    public void ZeroRequestedSharesNeverProduceNonFiniteWeights()
+    {
+        var weights = PoolWeights.Calculate(new Dictionary<string, double> { [A] = 100 }, new Dictionary<string, double> { [A] = 0 });
+        Assert.Equal(0, weights[A]); Assert.All(weights.Values, value => Assert.True(double.IsFinite(value)));
+    }
+
+    [Fact]
     public void StaticInjectionAndBotPoolsBothUseCombinedChances()
     {
         using var fixture = new Fixture(new() { Entries = [Entry(A, 20), Entry(B, 30)] });
@@ -105,7 +112,7 @@ public class RegressionTests
     {
         using var fixture = new Fixture(new() { Entries = ConfigService.ImportEntries($"[{{\"Tpl\":\"{A}\",\"Static\":{{\"MapChances\":{{\"WOODS\":7}}}}}}]") });
         fixture.Config.Load();
-        var clone = fixture.Config.CloneConfig();
+        var clone = fixture.Config.GetSnapshot().Config;
         Assert.Equal(7, LootInjectionService.ChanceFor(1, clone.Entries[0].Static.MapChances, "woods"));
         Assert.Equal(7, LootInjectionService.ChanceFor(1, clone.Entries[0].Static.MapChances, "WOODS"));
         var genericClone = ConfigService.Clone(clone.Entries[0].Static);
@@ -196,6 +203,40 @@ public class RegressionTests
     }
 
     [Fact]
+    public void AirdropTypeFilterPreservesDefaultsAndOnlyAddsLootToSelectedCrates()
+    {
+        var entry = Entry(A, 20);
+        entry.Airdrops = new() { Enabled = true, ChancePercent = 100 };
+        using var fixture = new Fixture(new() { Entries = [entry] });
+        var extra = new ExtraLootService(fixture.Config, fixture.Catalog, fixture.Presets, new CopyCloner(), Logger<ExtraLootService>(), null!);
+        var medical = SPTarkov.Server.Core.Models.Enums.ItemTpl.LOOTCONTAINER_AIRDROP_MEDICAL_CRATE;
+        var weapons = SPTarkov.Server.Core.Models.Enums.ItemTpl.LOOTCONTAINER_AIRDROP_WEAPON_CRATE;
+        Assert.Single(extra.AddAirdropLoot([], medical));
+        Assert.Single(extra.AddAirdropLoot([], Vanilla));
+        fixture.Config.Config.Entries[0].Airdrops.Types = ["foodMedical"];
+        Assert.Single(extra.AddAirdropLoot([], medical));
+        Assert.Empty(extra.AddAirdropLoot([], weapons));
+        Assert.Empty(extra.AddAirdropLoot([], Vanilla));
+    }
+
+    [Fact]
+    public void AirdropTypesRoundTripAndRejectInvalidSelections()
+    {
+        var legacy = JsonSerializer.Deserialize<AirdropSettings>("{\"Enabled\":true}")!;
+        Assert.Empty(legacy.Types);
+        var entry = Entry(A, 20);
+        entry.Airdrops.Types = ["FOODMEDICAL", "foodMedical", "barter"];
+        var config = ConfigValidation.Normalize(new() { Entries = [entry] });
+        Assert.Equal(new[] { "foodMedical", "barter" }, config.Entries[0].Airdrops.Types);
+        var copy = JsonSerializer.Deserialize<LootPoolConfig>(JsonSerializer.Serialize(config))!;
+        Assert.Equal(entry.Airdrops.Types, copy.Entries[0].Airdrops.Types);
+        entry.Airdrops.Types = ["unknown"];
+        Assert.Throws<InvalidDataException>(() => ConfigValidation.Normalize(config));
+        entry.Airdrops.Types = null!;
+        Assert.Throws<InvalidDataException>(() => ConfigValidation.Normalize(config));
+    }
+
+    [Fact]
     public void RequestAndLootHarmonyPatchesAttachToInstalledServer()
     {
         using var fixture = new Fixture(new());
@@ -252,6 +293,101 @@ public class RegressionTests
         using (ExtraLootService.EnterMap("shoreline")) Assert.DoesNotContain(new MongoId(A), extra.AddBotLoot("assault", false, "Backpack", original).Keys);
         using (ExtraLootService.EnterMap("woods")) Assert.Equal(10, extra.AddBotLoot("assault", false, "Backpack", original)[new(A)]);
         Assert.Null(extra.CurrentMap);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(90)]
+    [InlineData(180)]
+    [InlineData(270)]
+    public void HeatProjectionKeepsRotatedCornersInsideTheMap(double rotation)
+    {
+        var projection = new HeatProjection(-100, -50, 300, 150, rotation);
+        var projected = new[] { projection.Project(-100, -50), projection.Project(-100, 150), projection.Project(300, -50), projection.Project(300, 150) };
+        Assert.All(projected, p => { Assert.InRange(p.X, -.0001, 1000.0001); Assert.InRange(p.Y, -.0001, projection.Height + .0001); });
+        var center = projection.Project(100, 50);
+        Assert.Equal(500, center.X, 6); Assert.Equal(projection.Height / 2, center.Y, 6);
+    }
+
+    [Fact]
+    public void HeatCellsKeepNegativeCoordinatesAndWeightsWithoutCountingInvalidPoints()
+    {
+        var cells = HeatmapGrid.Aggregate([new(-1, 0, -1, "container", "a", 5), new(-2, 0, -2, "loose", "b", 3), new(1, 0, 1, "loose", "c"), new(double.NaN, 0, 0, "loose", "invalid")], 40);
+        Assert.Equal(2, cells.Count); Assert.Equal(-20, cells[0].X); Assert.Equal(8, cells[0].Weight);
+        Assert.Equal(9, cells.Sum(c => c.Weight));
+        Assert.Throws<ArgumentOutOfRangeException>(() => HeatmapGrid.Aggregate([], 0));
+    }
+
+    [Fact]
+    public async Task HeatLocationsUsePhysicalContainersAndRespectSourcesMapsAndZeroChances()
+    {
+        using var fixture = new Fixture(new());
+        var maps = (Dictionary<string, Location>)typeof(LootInjectionService).GetField("_maps", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture.Injection)!;
+        var spawn = Spawn(); spawn.Template!.Position = new(50, 2, 100);
+        maps["woods"] = new()
+        {
+            StaticLoot = new(() => new() { [new(Container)] = new() { ItemDistribution = [new() { Tpl = new(Vanilla), RelativeProbability = 100 }] } }, false),
+            StaticContainers = new(() => new() { StaticContainers = [new() { Probability = 1, Template = new() { Root = A, Position = new(10, 2, 20), Items = [new() { Id = new(A), Template = new(Container) }] } }] }, false),
+            LooseLoot = new(() => new() { Spawnpoints = [spawn] }, false),
+        };
+        var entry = Entry(A, 10);
+        var result = await fixture.Injection.HeatLocations(entry, "woods");
+        Assert.Equal("container", Assert.Single(result.Points).Source); Assert.Equal(10, result.Points[0].X);
+        entry.Loose.Enabled = true;
+        Assert.Equal(2, (await fixture.Injection.HeatLocations(entry, "woods")).Points.Count);
+        entry.Static.ChancePercent = 0; entry.Loose.ChancePercent = 0;
+        Assert.Empty((await fixture.Injection.HeatLocations(entry, "woods")).Points);
+        entry.Maps = ["shoreline"]; entry.Static.ChancePercent = 10;
+        Assert.Empty((await fixture.Injection.HeatLocations(entry, "woods")).Points);
+    }
+
+    [Fact]
+    public async Task PlaceholderContainerCoordinatesAreReportedInsteadOfCreatingAnOriginHotspot()
+    {
+        using var fixture = new Fixture(new());
+        var maps = (Dictionary<string, Location>)fixture.Injection.Maps;
+        maps["woods"] = new()
+        {
+            StaticLoot = new(() => new() { [new(Container)] = new() { ItemDistribution = [new() { Tpl = new(Vanilla), RelativeProbability = 100 }] } }, false),
+            StaticContainers = new(() => new() { StaticContainers = [new() { Probability = 1, Template = new() { Position = new(0, 0, 0), Items = [new() { Id = new(A), Template = new(Container) }] } }] }, false),
+        };
+        var result = await fixture.Injection.HeatLocations(Entry(A, 10), "woods");
+        Assert.Empty(result.Points); Assert.Equal(1, result.MissingContainers); Assert.Equal(1, result.MissingCoordinates);
+    }
+
+    [Fact]
+    public void BundledTarkovMapManifestLoadsAndEveryFloorHasArtworkAndValidBounds()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "wwwroot", "maps"));
+        var maps = JsonSerializer.Deserialize<List<MapArtwork>>(File.ReadAllText(Path.Combine(root, "index.json")), ConfigService.JsonOptions)!;
+        Assert.NotEmpty(maps);
+        foreach (var map in maps)
+        {
+            Assert.NotEmpty(map.Maps); Assert.NotEmpty(map.Floors);
+            Assert.Contains(map.Floors, floor => floor.Level == map.DefaultLevel);
+            foreach (var floor in map.Floors)
+            {
+                Assert.True(floor.Bounds.Valid); Assert.NotEmpty(floor.Volumes);
+                Assert.True(File.Exists(Path.Combine(root, floor.ImagePath)));
+            }
+        }
+        Assert.True(File.Exists(Path.Combine(root, "LICENSE-CC-BY-NC-SA-4.0.md")));
+    }
+
+    [Fact]
+    public void FloorSelectionPreservesUpperFloorPriorityOverBroadGroundBounds()
+    {
+        var bounds = new MapExtent(-100, -100, 100, 100);
+        var map = new MapArtwork("test", "test", "test", ["woods"], 0, 0,
+        [
+            new("Ground", 0, bounds, "", [new(-100, -100, -100, 100, 100, 100)]),
+            new("Upper", 1, bounds, "", [new(0, 0, 2, 10, 10, 8)]),
+            new("Top", 2, bounds, "", [new(0, 0, 5, 10, 10, 10)]),
+        ], []);
+        Assert.Equal("Upper", map.FloorFor(new(5, 3, 5, "loose", "")));
+        Assert.Equal("Top", map.FloorFor(new(5, 6, 5, "loose", "")));
+        Assert.Equal("Ground", map.FloorFor(new(-10, 0, -10, "loose", "")));
+        Assert.Null(map.FloorFor(new(500, 0, 500, "loose", "")));
     }
 
     private static LootEntry Entry(string id, double chance, bool loose = false) => new()

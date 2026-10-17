@@ -1,0 +1,83 @@
+[
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "streets-of-tarkov",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/StreetsOfTarkov.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "ground-zero",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/GroundZero.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "customs",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Customs.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "factory",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Factory.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "interchange",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Interchange.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "lighthouse",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Lighthouse.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "reserve",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Reserve.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "shoreline",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Shoreline.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  },
+  {
+    "SvgRevision": "5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178",
+    "Author": "Shebuka",
+    "AuthorLink": "https://github.com/the-hideout/tarkov-dev-svg-maps/",
+    "Changes": "Extracted floor groups; retained a faint ground layer behind upper and underground floors. Artwork remains CC BY-NC-SA 4.0.",
+    "Map": "woods",
+    "Source": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/5a8b6115d1c0cf56f2ebaac1a96fa5ae3074d178/Woods.svg",
+    "MetadataSource": "https://raw.githubusercontent.com/the-hideout/tarkov-dev/ef62766bbd7ffb294c7184f9b8bfe8ed0f18320e/src/data/maps.json"
+  }
+]

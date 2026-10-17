@@ -12,6 +12,7 @@
 
 <HeadContent>
     <link href="/CustomLootPool/css/customlootpool.css" rel="stylesheet" />
+    <link href="/CustomLootPool/css/heatmap.css" rel="stylesheet" />
 </HeadContent>
 
 <div class="clp-page spt-page">
@@ -57,7 +58,7 @@
         }
         <p class="clp-help">@T("As chances são calculadas juntas em cada pool. Se a soma chegar a 100%, os itens configurados dividem todo o pool proporcionalmente. Entradas duplicadas usam a maior chance aplicável.", "Chances are calculated together in each pool. At a total of 100% or more, configured items share the entire pool proportionally. Duplicate entries use the highest applicable chance.")</p>
 
-        @if (Injection.MultipliersChanged() && Injection.GetMultipliers() is { } multipliers)
+        @if (Injection.GetMultipliers() is { } multipliers && multipliers.Any(m => m.Changed))
         {
             <MudPaper Elevation="0" Class="clp-lol spt-panel pa-5">
                 <div class="clp-lol-head">
@@ -504,13 +505,22 @@
                                     </div>
                                     <div class="clp-block-body">
                                         <div class="clp-block-col">
-                                            <span class="clp-help">@T("Quando um airdrop cai, o item pode vir dentro da caixa, junto com o loot normal dela. Vale para todos os tipos de airdrop.",
-                                                                    "When an airdrop lands, the item can come inside the crate, on top of its normal loot. Works for every airdrop type.")</span>
+                                            <span class="clp-help">@T("Quando um airdrop cai, o item pode vir dentro da caixa, junto com o loot normal dela. Selecione os tipos de caixa permitidos.",
+                                                                    "When an airdrop lands, the item can come inside the crate, on top of its normal loot. Select the allowed crate types.")</span>
+                                            <MudSelect T="string" Label="@T("Tipos de airdrop", "Airdrop types")" MultiSelection="true"
+                                                       SelectedValues="@e.Airdrops.Types" SelectedValuesChanged="@(values => e.Airdrops.Types = values.ToList())"
+                                                       Disabled="@(!e.Airdrops.Enabled)" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                                @foreach (var type in AirdropTypes.All)
+                                                {
+                                                    <MudSelectItem T="string" Value="@type">@AirdropTypeName(type)</MudSelectItem>
+                                                }
+                                            </MudSelect>
+                                            <span class="clp-help">@T("Nenhuma seleção = todos os tipos. Não altera a frequência nem o tipo dos airdrops.", "No selection = all types. Does not change airdrop frequency or which type is generated.")</span>
                                         </div>
                                         <div class="clp-block-col">
                                             <span class="clp-field-label">@T("Chance por airdrop", "Chance per airdrop")</span>
                                             <ChanceInput Value="@e.Airdrops.ChancePercent" ValueChanged="@(v => e.Airdrops.ChancePercent = v)" Disabled="@(!e.Airdrops.Enabled)" Pt="@IsPt" Max="100"
-                                                         Help="@T("100% = toda caixa de airdrop traz 1 deste item.", "100% = every airdrop crate brings 1 of this item.")" />
+                                                         Help="@T("100% = toda caixa dos tipos permitidos traz 1 deste item.", "100% = every allowed airdrop crate brings 1 of this item.")" />
                                         </div>
                                     </div>
                                 </section>
@@ -519,6 +529,7 @@
 
                         <div class="clp-reach">
                             <div class="clp-reach-buttons">
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Map" Disabled="@(item is null)" OnClick="() => OpenHeatmap(e)">Loot Atlas</MudButton>
                                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" StartIcon="@Icons.Material.Filled.TravelExplore"
                                            Disabled="@(item is null || busy.ContainsKey(e))" OnClick="() => LoadPreview(e)">
                                     @T("Ver onde vai aparecer", "Show where it spawns")
@@ -586,7 +597,7 @@
                                         <MudTooltip Text="@(r.ContainerNames.Count == 0 ? T("Nenhum contêiner", "No containers") : string.Join(", ", r.ContainerNames))">
                                             <div class="@($"clp-reach-chip {(empty ? "clp-reach-empty" : "")}")">
                                                 <strong>@r.MapName</strong>
-                                                <span>@r.ContainerTypes @T("tipos de contêiner", "container types") · @r.Spawnpoints @T("pontos", "spots")</span>
+                                                <span>@r.ContainerTypes @T("tipos de contêiner", "container types") · @r.Spawnpoints @T("pontos de loot solto", "loose-loot spots")</span>
                                             </div>
                                         </MudTooltip>
                                     }
@@ -605,7 +616,28 @@
     </MudContainer>
 </div>
 
+@if (heatEntry is not null && heatContext is not null)
+{
+    <LootHeatmap Entry="@heatEntry" Context="@heatContext" OnClose="() => heatEntry = null" />
+}
+
 @code {
+    private LootEntry? heatEntry;
+    private LootPoolConfig? heatContext;
+    private void OpenHeatmap(LootEntry entry)
+    {
+        heatContext = ConfigService.CloneConfigOf(working);
+        heatEntry = heatContext.Entries[working.Entries.IndexOf(entry)];
+    }
+    private string AirdropTypeName(string type) => type switch
+    {
+        "mixed" => T("Suprimentos mistos", "Mixed supplies"),
+        "weaponArmor" => T("Armas e armaduras", "Weapons and armor"),
+        "foodMedical" => T("Comida e medicamentos", "Food and medical"),
+        "barter" => T("Suprimentos de troca", "Barter supplies"),
+        "radar" => T("Técnico / evento", "Technical / event"),
+        _ => type,
+    };
     private sealed record Preset(string NamePt, string NameEn, string DescPt, string DescEn, List<LootEntry> Entries);
 
     private static readonly List<Preset> Presets =
@@ -720,11 +752,7 @@
     // Language is saved on its own, so it never counts as an unsaved change
     private static string Serialize(LootPoolConfig cfg)
     {
-        var language = cfg.Language;
-        cfg.Language = string.Empty;
-        var json = System.Text.Json.JsonSerializer.Serialize(cfg);
-        cfg.Language = language;
-        return json;
+        return System.Text.Json.JsonSerializer.Serialize(new { cfg.Enabled, cfg.Debug, cfg.CompensateLootMultipliers, cfg.Entries });
     }
 
     private bool IsPt => ConfigService.IsPortuguese;
@@ -825,7 +853,7 @@
     private string? ChanceNote(LootEntry entry, bool loose)
     {
         var settingsEnabled = loose ? entry.Loose.Enabled : entry.Static.Enabled;
-        if (!settingsEnabled || !Injection.MultipliersChanged() || Injection.GetMultipliers() is not { } all)
+        if (!settingsEnabled || Injection.GetMultipliers() is not { } all || !all.Any(m => m.Changed))
         {
             return null;
         }
@@ -1035,7 +1063,7 @@
             return;
         }
 
-        var valid = entries.Where(e => !string.IsNullOrWhiteSpace(e.Tpl)).ToList();
+        var valid = entries;
         int unknown = valid.Count(e => !Catalog.Exists(e.Tpl));
         if (replace)
         {
@@ -1137,6 +1165,7 @@
         working.Entries.Remove(entry);
         previews.Remove(entry);
         sims.Remove(entry);
+        tabs.Remove(entry);
         collapsed.Remove(entry);
     }
 
@@ -1154,10 +1183,6 @@
             foreach (var entry in working.Entries)
             {
                 entry.Name = Catalog.Get(entry.Tpl)?.Name ?? entry.Name;
-                entry.Static.ChancePercent = Math.Clamp(entry.Static.ChancePercent, 0, 90);
-                entry.Loose.ChancePercent = Math.Clamp(entry.Loose.ChancePercent, 0, 90);
-                entry.Bots.ChancePercent = Math.Clamp(entry.Bots.ChancePercent, 0, 90);
-                entry.Airdrops.ChancePercent = Math.Clamp(entry.Airdrops.ChancePercent, 0, 100);
             }
 
             savedRevision = ConfigService.Save(working, savedRevision);
