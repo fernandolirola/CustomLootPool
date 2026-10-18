@@ -469,7 +469,11 @@ public class LootInjectionService(
                     if (spatialMap is not null && count > 0)
                     {
                         var position = source == "container" ? containerPositions.Resolve(mapId, spawn.Id, spawn.Position) : spawn.Position;
-                        if (ToHeatPoint(position, source, source == "container" ? "Container" : "Loose loot") is { } point)
+                        string? containerTpl = source == "container"
+                            ? (spawn.Items?.FirstOrDefault(i => i.Id.ToString() == spawn.Root) ?? spawn.Items?.FirstOrDefault())?.Template.ToString()
+                            : null;
+                        string name = source == "container" ? (containerTpl is null ? "Container" : catalog.NameOf(containerTpl)) : "Loose loot";
+                        if (ToHeatPoint(position, source, name, containerTpl) is { } point)
                         {
                             var key = (Math.Round(point.X, 1), Math.Round(point.Y, 1), Math.Round(point.Z, 1), source);
                             spatial[key] = point with { Weight = (spatial.GetValueOrDefault(key)?.Weight ?? 0) + count };
@@ -592,11 +596,11 @@ public class LootInjectionService(
     private static HashSet<int> SpotsForCategories(PoolIndex index, string mapId, IEnumerable<string> categories) =>
         categories.SelectMany(category => index.LooseSpots.GetValueOrDefault(category)?.GetValueOrDefault(mapId) ?? []).ToHashSet();
 
-    private static HeatPoint? ToHeatPoint(Vector3? position, string source, string name) =>
+    private static HeatPoint? ToHeatPoint(Vector3? position, string source, string name, string? tpl = null) =>
         position is { } p && float.IsFinite(p.X) && float.IsFinite(p.Y) && float.IsFinite(p.Z)
             // Zero vectors in stock container records are placeholders, not world positions.
             && !(source == "container" && p.X == 0 && p.Y == 0 && p.Z == 0)
-            ? new(p.X, p.Y, p.Z, source, name) : null;
+            ? new(p.X, p.Y, p.Z, source, name, 1, string.IsNullOrEmpty(tpl) ? null : tpl) : null;
 
     public async Task<HeatSample> HeatLocations(LootEntry entry, string mapId)
     {
@@ -856,7 +860,7 @@ public class LootInjectionService(
                     {
                         var root = c.Template!.Items!.FirstOrDefault(i => i.Id.ToString() == c.Template.Root) ?? c.Template.Items!.FirstOrDefault();
                         string tpl = root?.Template.ToString() ?? "";
-                        return (tpl, ToHeatPoint(containerPositions.Resolve(mapId, c.Template.Id, c.Template.Position), "container", catalog.NameOf(tpl)));
+                        return (tpl, ToHeatPoint(containerPositions.Resolve(mapId, c.Template.Id, c.Template.Position), "container", catalog.NameOf(tpl), tpl));
                     }).ToList();
                 foreach ((MongoId containerId, StaticLootDetails details) in RawValue(location.StaticLoot) ?? [])
                 {

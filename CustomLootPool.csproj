@@ -6,15 +6,14 @@
     <OutputType>Library</OutputType>
     <AssemblyName>CustomLootPool</AssemblyName>
     <RootNamespace>CustomLootPool</RootNamespace>
-    <Version>1.3.1</Version>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Version>1.4.0</Version>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Tests\**;test-artifacts\**" />
-    <Content Remove="Tests\**;test-artifacts\**" />
-    <None Remove="Tests\**;test-artifacts\**" />
+    <Compile Remove="Tests\**" />
+    <Content Remove="Tests\**" />
+    <None Remove="Tests\**" />
     <InternalsVisibleTo Include="CustomLootPool.Tests" />
     <PackageReference Include="SPTushonka.Common" Version="4.1.6" ExcludeAssets="runtime" />
     <PackageReference Include="SPTushonka.DI" Version="4.1.6" ExcludeAssets="runtime" />

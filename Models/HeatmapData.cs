@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace CustomLootPool.Models;
 
-public sealed record HeatPoint(double X, double Y, double Z, string Source, string Name, double Weight = 1);
+public sealed record HeatPoint(double X, double Y, double Z, string Source, string Name, double Weight = 1, string? Tpl = null);
 public sealed record HeatSample(List<HeatPoint> Points, int MissingCoordinates = 0, int MissingContainers = 0);
 public sealed record HeatCell(double X, double Z, double Weight);
 

@@ -1,0 +1,227 @@
+{
+ "578f87a3245977356274f2cb": {
+  "name": "Duffle bag",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Sports_bag",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/d/d7/DuffleBag.png"
+ },
+ "578f87b7245977356274f2cd": {
+  "name": "Drawer",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Drawer",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/f/f2/Drawers.png"
+ },
+ "5909d50c86f774659e6aaebe": {
+  "name": "Toolbox",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Toolbox",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/46/Toolbox.png"
+ },
+ "578f87ad245977356274f2cc": {
+  "name": "Wooden crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Wooden_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/1/11/WoodenCrate.png"
+ },
+ "5909d5ef86f77467974efbd8": {
+  "name": "Weapon box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Weapon_box_%286x2%29",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/7/7c/Weapon_Box_5x2.png"
+ },
+ "578f8778245977358849a9b5": {
+  "name": "Jacket",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Jacket",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/40/Jackets.png"
+ },
+ "5909d7cf86f77470ee57d75a": {
+  "name": "Weapon box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Weapon_box_%284x4%29",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/7/75/Weapon_Box_4x4.png"
+ },
+ "59139c2186f77411564f8e42": {
+  "name": "PC block",
+  "page": "https://escapefromtarkov.fandom.com/wiki/PC_block",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/34/Drive-in-PC.png"
+ },
+ "5909d36d86f774660f0bb900": {
+  "name": "Grenade box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Grenade_box",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/5d/GrenadeCrate.png"
+ },
+ "5d6d2bb386f774785b07a77a": {
+  "name": "Buried barrel cache",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Buried_barrel_cache",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/6/69/Buried_Barrel_Cache.png"
+ },
+ "5909e4b686f7747f5b744fa4": {
+  "name": "Dead Scav",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Dead_Scav",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c6/DeadScav.png"
+ },
+ "5909d24f86f77466f56e6855": {
+  "name": "Medbag SMU06",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Medbag",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/3b/Med_Bag.png"
+ },
+ "578f879c24597735401e6bc6": {
+  "name": "Cash register",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Cash_register",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/0/0f/Register.png"
+ },
+ "6582e6d7b14c3f72eb071420": {
+  "name": "PMC body",
+  "page": "https://escapefromtarkov.fandom.com/wiki/PMC_body",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/e/ed/DeadPMC-Container.png"
+ },
+ "5909d76c86f77471e53d2adf": {
+  "name": "Weapon box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Weapon_box_%286x4%29",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/7/76/Weapon_Box_6x3.png"
+ },
+ "5d6d2b5486f774785c2ba8ea": {
+  "name": "Ground cache",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Ground_cache",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/1/10/Groundcache.png"
+ },
+ "5d6fd45b86f774317075ed43": {
+  "name": "Technical supply crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Technical_supply_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/4b/TechSupplyCrate.png"
+ },
+ "5909d45286f77465a8136dc6": {
+  "name": "Wooden ammo box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Wooden_ammo_box",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/6/66/AmmoBox_Container.png"
+ },
+ "5ad74cf586f774391278f6f0": {
+  "name": "Cash register TAR2-2",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Cash_register_TAR2-2",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/9/9b/Register_TAR2-2.png"
+ },
+ "5909d4c186f7746ad34e805a": {
+  "name": "Medcase",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Medcase",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/d/de/Med_Case.png"
+ },
+ "5c052cea86f7746b2101e8d8": {
+  "name": "Plastic suitcase",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Plastic_suitcase",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/8/81/Plastic_suitcase.png"
+ },
+ "578f8782245977354405a1e3": {
+  "name": "Safe",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Safe",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/8/87/Safe_Container.png"
+ },
+ "5909d89086f77472591234a0": {
+  "name": "Weapon box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Weapon_box_%286x6%29",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/3e/Weapon_Box_5x5.png"
+ },
+ "5d6fd13186f77424ad2a8c69": {
+  "name": "Ration supply crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Ration_supply_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/1/1a/RationSupplyCrate.png"
+ },
+ "5d6fe50986f77449d97f7463": {
+  "name": "Medical supply crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Medical_supply_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/34/MedicalSupplyCrate.png"
+ },
+ "658420d8085fea07e674cdb6": {
+  "name": "Civilian body",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Civilian_body",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c0/Dead_Civilian_Loot_Container.png"
+ },
+ "67adf4db515e3dd542077a1d": {
+  "name": "Wooden crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Wooden_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/1/11/WoodenCrate.png"
+ },
+ "67adf5752fc5ee84020a9940": {
+  "name": "Dead Scav",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Dead_Scav",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c6/DeadScav.png"
+ },
+ "67614e3a6a90e4f10b0b140d": {
+  "name": "Festive airdrop supply crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Festive_airdrop_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c6/Festive_Airdrop_Crate_Sled.png"
+ },
+ "67adf5f7adc1f43b0702b826": {
+  "name": "Technical supply crate",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Technical_supply_crate",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/4b/TechSupplyCrate.png"
+ },
+ "66acff0a1d8e1083b303f5af": {
+  "name": "Bank safe",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Bank_safe",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c1/Bank_safe.png"
+ },
+ "67adf54d1c58bd68b2002ff0": {
+  "name": "Toolbox",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Toolbox",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/46/Toolbox.png"
+ },
+ "61aa1ead84ea0800645777fd": {
+  "name": "Medbag SMU06",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Medbag",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/3b/Med_Bag.png"
+ },
+ "67adf4eb110ba15da90c6413": {
+  "name": "Grenade box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Grenade_box",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/5d/GrenadeCrate.png"
+ },
+ "67adf4b81c58bd68b2002fec": {
+  "name": "Wooden ammo box",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Wooden_ammo_box",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/6/66/AmmoBox_Container.png"
+ },
+ "6582e6bb0c3b9823fe6d1840": {
+  "name": "Scav body",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Scav_body",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/9/9e/Scav_Body_Loot_Container.png"
+ },
+ "6582e6c6edf14c4c6023adf2": {
+  "name": "Lab technician body",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Lab_technician_body",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/0/01/Lab_technician_body_Loot_Container.png"
+ },
+ "64d11702dd0cd96ab82c3280": {
+  "name": "Bank safe",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Bank_safe",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/c/c1/Bank_safe.png"
+ },
+ "64d116f41a9c6143a956127d": {
+  "name": "Bank cash register",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Bank_cash_register",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/a/a7/Bank_cash_register.png"
+ },
+ "67adf4a95247ac91530fcec7": {
+  "name": "Jacket",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Jacket",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/40/Jackets.png"
+ },
+ "61aa1e9a32a4743c3453d2cf": {
+  "name": "Duffle bag",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Sports_bag",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/d/d7/DuffleBag.png"
+ },
+ "5d07b91b86f7745a077a9432": {
+  "name": "Common fund stash",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Common_fund_stash",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/5f/ShturmanCrate.png"
+ },
+ "5937ef2b86f77408a47244b3": {
+  "name": "Jacket",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Jacket",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/40/Jackets.png"
+ },
+ "59387ac686f77401442ddd61": {
+  "name": "Jacket",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Jacket",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/40/Jackets.png"
+ },
+ "5914944186f774189e5e76c2": {
+  "name": "Jacket",
+  "page": "https://escapefromtarkov.fandom.com/wiki/Jacket",
+  "image": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/40/Jackets.png"
+ }
+}

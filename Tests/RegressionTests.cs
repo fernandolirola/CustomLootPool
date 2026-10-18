@@ -424,7 +424,7 @@ public class RegressionTests
             typeof(ItemCatalogService).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(Catalog, items);
             Presets = new(Activator.CreateInstance<GlobalTable>(), null!, new CopyCloner());
             Presets.HydratePresetStore([]);
-            Injection = new(null!, templates, Presets, new CopyCloner(), Config, Catalog, null!, null!, null!, null!, Logger<LootInjectionService>());
+            Injection = new(null!, templates, Presets, new CopyCloner(), Config, Catalog, null!, null!, null!, null!, new ContainerPositions(Config), Logger<LootInjectionService>());
         }
         public void Dispose()
         {

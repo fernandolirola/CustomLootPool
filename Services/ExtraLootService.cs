@@ -130,6 +130,9 @@ public class ExtraLootService(
             var root = items.First(i => i.ParentId is null || !ids.Contains(i.ParentId));
             root.ParentId = null;
             root.SlotId = null;
+            // Airdrop loot is found in raid; presets came without that flag
+            root.Upd ??= new Upd();
+            root.Upd.SpawnedInSession = true;
             items.Remove(root);
             items.Insert(0, root);
             return items;

@@ -1,5 +1,25 @@
 # Changes
 
+## 1.4.0
+
+### New
+
+- Change the item of any card without losing its settings: click the item name (or the swap button) and pick the new item. Undo is offered right after.
+- Duplicate now opens the copy on the item picker, so you can reuse a finished setup for another item in two clicks. "Keep" leaves the copy on the same item, for another % on other maps or dates.
+- When the old item's own category was the only loot pool picked, it follows the new item; hand-picked pools stay as they were.
+- Loot Atlas: markers keep a readable size while zooming instead of growing with the map.
+- Loot Atlas: hovering (or focusing) a container shows a card with its name and picture (pictures of all 45 container types ship with the mod, from the Escape from Tarkov Wiki), how many are stacked there and, after a simulation, the items per raid. Loose loot spots show their details the same way.
+
+### Fixes
+
+- Simulated raids labeled every container as "Container"; they now show the real container type.
+- Items with presets (weapons, armor) placed in airdrops were not marked found in raid.
+- Regression tests did not build after container positions were added.
+
+### Cleanup
+
+- Remove unused styles and redundant project settings.
+
 ## 1.3.1
 
 - Loot Atlas now shows containers. Stock SPT stores (0, 0, 0) for every static container, so their real positions were extracted from the game scenes and ship in `wwwroot/maps/container-positions.json` (99.7% of containers on every map, matched by instance Id).

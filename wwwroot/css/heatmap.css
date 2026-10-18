@@ -183,3 +183,42 @@
     width: 7px; height: 7px; border-radius: 50%;
     background: #94efb3; border: 1px solid var(--spt-bg);
 }
+
+/* Markers keep a readable size while zooming: heatmap.js sets --clp-mark from the zoom level */
+.clp-atlas-mark { transform: scale(var(--clp-mark, 1)); transform-origin: 0 0; }
+.clp-atlas-box { cursor: pointer; outline: none; }
+.clp-atlas-box:focus-visible rect { fill: #ffe08a; stroke: var(--spt-text); stroke-width: 1.2; }
+.clp-atlas-spot { cursor: pointer; }
+.clp-atlas-spot:hover circle { fill: #d6ffe4; }
+
+/* Hover card for containers and loose loot spots */
+.clp-atlas-tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 5;
+    display: grid;
+    gap: 6px;
+    max-width: 280px;
+    padding: 8px 10px;
+    pointer-events: none;
+    background: var(--spt-bg);
+    border: 1px solid var(--spt-border-strong, var(--spt-border));
+    border-radius: var(--spt-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+    font-size: .8rem;
+    color: var(--spt-text);
+}
+.clp-atlas-tip[hidden] { display: none; }
+.clp-atlas-tip-row { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.clp-atlas-tip-row img {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    object-fit: contain;
+    background: var(--spt-bg-soft);
+    border: 1px solid var(--spt-border);
+    border-radius: 4px;
+}
+.clp-atlas-tip-title { font-weight: 600; }
+.clp-atlas-tip-extra { color: var(--spt-text-muted); }

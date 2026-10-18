@@ -277,7 +277,7 @@
                 var isCollapsed = collapsed.Contains(e);
                 var tab = tabs.GetValueOrDefault(e, "static");
                 var active = LootInjectionService.IsActiveNow(e.Schedule);
-                <MudPaper Elevation="0" Class="@($"clp-card spt-panel {(e.Enabled ? "" : "clp-card-off")} {(isCollapsed ? "clp-card-collapsed" : "")}")" @key="e">
+                <MudPaper Elevation="0" Class="@($"clp-card spt-panel {(e.Enabled ? "" : "clp-card-off")} {(isCollapsed ? "clp-card-collapsed" : "")} {(swapping.Contains(e) ? "clp-card-swapping" : "")}")" @key="e">
                     <div class="clp-card-head">
                         <button type="button" class="clp-img-box" title="@(isCollapsed ? T("Expandir", "Expand") : T("Recolher", "Collapse"))" @onclick="() => ToggleCollapsed(e)">
                             @if (item is not null)
@@ -291,7 +291,66 @@
                             }
                         </button>
                         <div class="clp-card-title">
-                            <MudText Typo="Typo.h6" Class="clp-item-name">@(item?.Name ?? e.Name ?? T("Item desconhecido", "Unknown item"))</MudText>
+                            @if (swapping.Contains(e))
+                            {
+                                <div class="clp-swap">
+                                    <span class="clp-swap-hint">
+                                        @(freshCopies.Contains(e)
+                                            ? T("Cópia criada com todas as configurações. Escolha o item dela:", "Copy created with every setting. Pick its item:")
+                                            : T("Trocar o item, mantendo todas as configurações:", "Change the item, keeping every setting:"))
+                                    </span>
+                                    <MudAutocomplete T="CatalogItem"
+                                                     Value="@null"
+                                                     ValueChanged="@(picked => SwapItem(e, picked))"
+                                                     SearchFunc="@SearchItems"
+                                                     ToStringFunc="@(i => i is null ? string.Empty : i.Name)"
+                                                     Placeholder="@T("Buscar o novo item por nome ou ID...", "Search the new item by name or ID...")"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     AdornmentIcon="@Icons.Material.Filled.Search"
+                                                     DebounceInterval="200"
+                                                     MinCharacters="2"
+                                                     MaxItems="30"
+                                                     AutoFocus="true"
+                                                     PopoverClass="clp-popover"
+                                                     Class="clp-swap-search">
+                                        <ItemTemplate Context="option">
+                                            <div class="clp-option">
+                                                <img class="clp-option-img" src="@option.IconUrl" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+                                                <div class="clp-option-copy">
+                                                    <span class="clp-option-name">@option.Name @if (!string.IsNullOrEmpty(option.ShortName)) { <em>(@option.ShortName)</em> }</span>
+                                                    <span class="clp-option-meta">@option.ParentName · <span class="spt-mono">@option.Id</span></span>
+                                                </div>
+                                                @if (option.Id.Equals(e.Tpl, StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <span class="clp-tag">@T("item atual", "current item")</span>
+                                                }
+                                                else if (working.Entries.Any(x => x.Tpl.Equals(option.Id, StringComparison.OrdinalIgnoreCase)))
+                                                {
+                                                    <span class="clp-tag">@T("já na lista", "already added")</span>
+                                                }
+                                            </div>
+                                        </ItemTemplate>
+                                        <NoItemsTemplate>
+                                            <MudText Class="pa-3 spt-muted">@T("Nenhum item encontrado.", "No items found.")</MudText>
+                                        </NoItemsTemplate>
+                                    </MudAutocomplete>
+                                    <div class="clp-swap-actions">
+                                        <button type="button" class="clp-btn clp-btn-ghost" @onclick="() => StopSwap(e)">
+                                            @(freshCopies.Contains(e)
+                                                ? T($"Manter {item?.Name ?? e.Name}", $"Keep {item?.Name ?? e.Name}")
+                                                : T("Cancelar", "Cancel"))
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <button type="button" class="clp-item-name-btn" title="@T("Trocar o item, mantendo as configurações", "Change the item, keeping the settings")" @onclick="() => StartSwap(e)">
+                                    <MudText Typo="Typo.h6" Class="clp-item-name">@(item?.Name ?? e.Name ?? T("Item desconhecido", "Unknown item"))</MudText>
+                                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" Class="clp-item-swap-icon" />
+                                </button>
+                            }
                             @if (item is not null)
                             {
                                 <span class="clp-meta">@item.ParentName · @(item.Width)x@(item.Height)</span>
@@ -319,7 +378,10 @@
                         </div>
                         <div class="clp-card-tools">
                             <MudSwitch T="bool" Value="@e.Enabled" ValueChanged="@(v => e.Enabled = v)" Color="Color.Warning" />
-                            <MudTooltip Text="@T("Duplicar (ex.: outra % em outros mapas)", "Duplicate (e.g. another % on other maps)")">
+                            <MudTooltip Text="@T("Trocar o item (mantém as configurações)", "Change item (keeps the settings)")">
+                                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" OnClick="() => StartSwap(e)" />
+                            </MudTooltip>
+                            <MudTooltip Text="@T("Duplicar com as mesmas configurações e escolher outro item", "Duplicate with the same settings and pick another item")">
                                 <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="() => Duplicate(e)" />
                             </MudTooltip>
                             <MudTooltip Text="@T("Remover", "Remove")">
@@ -747,6 +809,8 @@
         sims.Clear();
         tabs.Clear();
         collapsed.Clear();
+        swapping.Clear();
+        freshCopies.Clear();
     }
 
     // Language is saved on its own, so it never counts as an unsaved change
@@ -1089,11 +1153,97 @@
         Snackbar.Add(msg, valid.Count > 0 ? Severity.Success : Severity.Info);
     }
 
+    // Cards in "change item" mode, and copies that were just made and still wait for their item
+    private readonly HashSet<LootEntry> swapping = [];
+    private readonly HashSet<LootEntry> freshCopies = [];
+
     private void Duplicate(LootEntry entry)
     {
         var copy = ConfigService.Clone(entry);
         working.Entries.Insert(working.Entries.IndexOf(entry) + 1, copy);
-        Snackbar.Add(T("Cópia criada logo abaixo. Útil para outra % em outros mapas ou datas.", "Copy added right after it. Handy for another % on other maps or dates."), Severity.Normal);
+        tabs[copy] = tabs.GetValueOrDefault(entry, "static");
+        collapsed.Remove(copy);
+        // The copy opens straight on the item picker; "Keep" leaves it as the same item (another % on other maps)
+        freshCopies.Add(copy);
+        swapping.Add(copy);
+    }
+
+    private void StartSwap(LootEntry entry)
+    {
+        collapsed.Remove(entry);
+        swapping.Add(entry);
+    }
+
+    private void StopSwap(LootEntry entry)
+    {
+        swapping.Remove(entry);
+        if (freshCopies.Remove(entry))
+        {
+            Snackbar.Add(T("Cópia mantida com o mesmo item. Útil para outra % em outros mapas ou datas.", "Copy kept with the same item. Handy for another % on other maps or dates."), Severity.Normal);
+        }
+    }
+
+    private void SwapItem(LootEntry entry, CatalogItem? picked)
+    {
+        if (picked is null)
+        {
+            return;
+        }
+
+        swapping.Remove(entry);
+        bool wasCopy = freshCopies.Remove(entry);
+        if (picked.Id.Equals(entry.Tpl, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var old = (Tpl: entry.Tpl, Name: entry.Name, Static: entry.Static.Categories.ToList(), Loose: entry.Loose.Categories.ToList());
+        var oldItem = Catalog.Get(entry.Tpl);
+
+        entry.Tpl = picked.Id;
+        entry.Name = picked.Name;
+        // Loot pools that were only the old item's own category follow the new item; hand-picked pools stay
+        if (oldItem is not null)
+        {
+            FollowCategory(entry.Static.Categories, oldItem.ParentId, picked.ParentId);
+            FollowCategory(entry.Loose.Categories, oldItem.ParentId, picked.ParentId);
+        }
+
+        previews.Remove(entry);
+        sims.Remove(entry);
+
+        string from = oldItem?.Name ?? old.Name ?? old.Tpl;
+        string message = wasCopy
+            ? T($"Cópia agora é {picked.Name}, com as configurações de {from}.", $"The copy is now {picked.Name}, with the settings of {from}.")
+            : T($"{from} trocado por {picked.Name}. As configurações foram mantidas.", $"{from} changed to {picked.Name}. Settings were kept.");
+        if (working.Entries.Count(x => x.Tpl.Equals(picked.Id, StringComparison.OrdinalIgnoreCase)) > 1)
+        {
+            message += T(" Esse item já tinha um card; o mod usa a maior chance entre os dois.", " That item already had a card; the mod uses the higher chance of the two.");
+        }
+
+        Snackbar.Add(message, Severity.Success, options =>
+        {
+            options.Action = T("Desfazer", "Undo");
+            options.ActionColor = Color.Warning;
+            options.OnClick = _ =>
+            {
+                entry.Tpl = old.Tpl;
+                entry.Name = old.Name;
+                entry.Static.Categories = old.Static;
+                entry.Loose.Categories = old.Loose;
+                previews.Remove(entry);
+                sims.Remove(entry);
+                return InvokeAsync(StateHasChanged);
+            };
+        });
+    }
+
+    private static void FollowCategory(List<string> categories, string oldParent, string newParent)
+    {
+        if (categories.Count == 1 && categories[0].Equals(oldParent, StringComparison.OrdinalIgnoreCase))
+        {
+            categories[0] = newParent;
+        }
     }
 
     private void SetEnabled(List<LootEntry> entries, bool enabled)
@@ -1163,6 +1313,8 @@
     private void Remove(LootEntry entry)
     {
         working.Entries.Remove(entry);
+        swapping.Remove(entry);
+        freshCopies.Remove(entry);
         previews.Remove(entry);
         sims.Remove(entry);
         tabs.Remove(entry);
