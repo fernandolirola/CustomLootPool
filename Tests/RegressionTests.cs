@@ -390,6 +390,116 @@ public class RegressionTests
         Assert.Null(map.FloorFor(new(500, 0, 500, "loose", "")));
     }
 
+    [Fact]
+    public void QualityScalesTiersButKeepsThePoolTotal()
+    {
+        var weights = QualityWeights.Apply(new Dictionary<string, double> { [A] = 50, [B] = 50 }, tpl => tpl == A ? 2 : 1);
+        Assert.Equal(100, weights.Values.Sum(), 8);
+        Assert.Equal(2, weights[A] / weights[B], 8);
+
+        var untouched = QualityWeights.Apply(new Dictionary<string, double> { [A] = 30, [B] = 70 }, _ => 0);
+        Assert.Equal(30, untouched[A]); Assert.Equal(70, untouched[B]);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(9_999, 1)]
+    [InlineData(50_000, 2)]
+    [InlineData(149_999, 2)]
+    [InlineData(1_000_000, 3)]
+    public void ValueTiersUseTheHighestReachedPriceAndIgnoreUnpricedItems(double price, double expected) =>
+        Assert.Equal(expected, QualityWeights.ForValue(new QualitySettings().ValueTiers, price));
+
+    [Fact]
+    public void QualityRunsBeforeConfiguredChancesSoTheyStayExact()
+    {
+        using var fixture = new Fixture(new() { Entries = [Entry(A, 20)], Quality = new() { Enabled = true } });
+        typeof(TemplateTable).GetProperty("Prices")!.SetValue(fixture.Templates, new Dictionary<MongoId, double> { [new(B)] = 100_000, [new(Vanilla)] = 1_000 });
+        var details = new StaticLootDetails
+        {
+            ItemDistribution = [new ItemDistribution { Tpl = new(B), RelativeProbability = 50, ExtensionData = [] }, new ItemDistribution { Tpl = new(Vanilla), RelativeProbability = 50, ExtensionData = [] }],
+        };
+        Call(fixture.Injection, "ApplyStatic", "woods", new Dictionary<MongoId, StaticLootDetails> { [new(Container)] = details });
+        var pool = details.ItemDistribution!.ToDictionary(item => item.Tpl.ToString(), item => (double)item.RelativeProbability!.Value / details.ItemDistribution!.Sum(d => (double)d.RelativeProbability!.Value) * 100);
+        Assert.Equal(20, pool[A], 4);
+        Assert.Equal(80 * 2 / 3.0, pool[B], 4);
+        Assert.Equal(80 / 3.0, pool[Vanilla], 4);
+    }
+
+    [Fact]
+    public void ConfiguredItemsStillFillEmptyPoolsWhenQualityIsOn()
+    {
+        using var fixture = new Fixture(new() { Entries = [Entry(A, 20)], Quality = new() { Enabled = true } });
+        var details = new StaticLootDetails { ItemDistribution = [new ItemDistribution { Tpl = new(Vanilla), RelativeProbability = 0, ExtensionData = [] }] };
+        Call(fixture.Injection, "ApplyStatic", "woods", new Dictionary<MongoId, StaticLootDetails> { [new(Container)] = details });
+        Assert.Equal(A, Assert.Single(details.ItemDistribution!).Tpl.ToString());
+    }
+
+    [Fact]
+    public void QualityAloneReweightsLooseSpotsAndRespectsItsMapsAndSources()
+    {
+        var quality = new QualitySettings { Enabled = true, Basis = QualityBasis.Value, Maps = ["woods"] };
+        using var fixture = new Fixture(new() { Quality = quality });
+        typeof(TemplateTable).GetProperty("Prices")!.SetValue(fixture.Templates, new Dictionary<MongoId, double> { [new(A)] = 200_000, [new(Vanilla)] = 1_000 });
+
+        var spawn = Spawn();
+        Call(fixture.Injection, "ApplyLoose", "woods", new LooseLoot { Spawnpoints = [spawn] });
+        Assert.Equal(75, spawn.ItemDistribution!.Single(item => item.ComposedKey!.Key == "existing-a").RelativeProbability!.Value, 6);
+        Assert.Equal(25, spawn.ItemDistribution!.Single(item => item.ComposedKey!.Key == "existing-v").RelativeProbability!.Value, 6);
+
+        var otherMap = Spawn();
+        Call(fixture.Injection, "ApplyLoose", "bigmap", new LooseLoot { Spawnpoints = [otherMap] });
+        Assert.All(otherMap.ItemDistribution!, item => Assert.Equal(50, item.RelativeProbability));
+    }
+
+    [Fact]
+    public void DefaultValueTiersRoughlyDoubleTheExpensiveShareOfCustomsContainers()
+    {
+        string database = Path.Combine(Environment.GetEnvironmentVariable("SPT_PATH") ?? @"C:\SPT", "SPT_Runtime", "SPT_Data", "database");
+        var loot = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(Path.Combine(database, "locations", "bigmap", "staticLoot.json")))!;
+        var prices = JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(Path.Combine(database, "templates", "prices.json")))!;
+        var tiers = new QualitySettings().ValueTiers;
+        double before = 0, after = 0;
+        int pools = 0;
+        foreach (var container in loot.Values)
+        {
+            var pool = container.GetProperty("itemDistribution").EnumerateArray()
+                .GroupBy(item => item.GetProperty("tpl").GetString()!)
+                .ToDictionary(group => group.Key, group => group.Sum(item => item.GetProperty("relativeProbability").GetDouble()));
+            if (pool.Values.Sum() <= 0) continue;
+            var scaled = QualityWeights.Apply(pool, tpl => QualityWeights.ForValue(tiers, prices.GetValueOrDefault(tpl)));
+            before += pool.Where(pair => prices.GetValueOrDefault(pair.Key) >= 50_000).Sum(pair => pair.Value) / pool.Values.Sum();
+            after += scaled.Where(pair => prices.GetValueOrDefault(pair.Key) >= 50_000).Sum(pair => pair.Value) / scaled.Values.Sum();
+            pools++;
+        }
+
+        Assert.True(pools > 20);
+        Assert.InRange(after / before, 1.8, 2.6);
+    }
+
+    [Theory]
+    [InlineData("""{"Quality":{"ValueTiers":[{"From":5000,"Multiplier":1}]}}""")]
+    [InlineData("""{"Quality":{"ValueTiers":[{"From":0,"Multiplier":1},{"From":0,"Multiplier":2}]}}""")]
+    [InlineData("""{"Quality":{"RareMultiplier":11}}""")]
+    [InlineData("""{"Quality":{"ValueTiers":[]}}""")]
+    public void InvalidQualitySettingsAreRejected(string json) =>
+        Assert.ThrowsAny<Exception>(() => ConfigValidation.Normalize(JsonSerializer.Deserialize<LootPoolConfig>(json, ConfigService.JsonOptions)!));
+
+    [Fact]
+    public void QualitySettingsDefaultOffAndSurviveSaveAndReload()
+    {
+        Assert.False(ConfigValidation.Normalize(JsonSerializer.Deserialize<LootPoolConfig>("{}", ConfigService.JsonOptions)!).Quality.Enabled);
+        var quality = new QualitySettings { Enabled = true, Basis = QualityBasis.Rarity, SuperrareMultiplier = 3, Maps = ["Woods"], ValueTiers = [new() { From = 20_000, Multiplier = 2 }, new() { From = 0, Multiplier = 1 }] };
+        using var fixture = new Fixture(new() { Quality = quality });
+        fixture.Config.Load();
+        var loaded = fixture.Config.Config.Quality;
+        Assert.True(loaded.Enabled);
+        Assert.Equal(QualityBasis.Rarity, loaded.Basis);
+        Assert.Equal(3, loaded.SuperrareMultiplier);
+        Assert.Equal(["woods"], loaded.Maps);
+        Assert.Equal([0, 20_000], loaded.ValueTiers.Select(tier => tier.From));
+    }
+
     private static LootEntry Entry(string id, double chance, bool loose = false) => new()
     {
         Tpl = id, Static = new() { Mode = TargetMode.All, ChancePercent = chance }, Loose = new() { Enabled = loose, Mode = TargetMode.All, ChancePercent = chance },

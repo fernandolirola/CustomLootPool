@@ -1,5 +1,14 @@
 # Changes
 
+## 1.5.0
+
+### New
+
+- Loot quality: a new card makes valuable or rare items more common in containers and loose loot without changing how many items spawn. Boost by price tier (flea, or handbook when the flea has none) or by the game's rarity, on all maps or only the ones you pick. Keys and keycards are left alone by default.
+- The boost runs before your list's chances, so configured items still get exactly their share.
+- A preview per map shows each tier's share and the average item value before and after. "Simulate raids" uses the card's settings, even before saving.
+- Off by default, so updating changes nothing until you turn it on.
+
 ## 1.4.0
 
 ### New

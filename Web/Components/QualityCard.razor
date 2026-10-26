@@ -1,0 +1,239 @@
+@namespace CustomLootPool.Web.Components
+@using System.Text.Json
+@using CustomLootPool.Models
+@using CustomLootPool.Services
+@inject LootInjectionService Injection
+
+<MudPaper Elevation="0" Class="@($"clp-quality spt-panel pa-5 {(Quality.Enabled ? "clp-quality-on" : "")}")">
+    <div class="clp-lol-head">
+        <MudIcon Icon="@Icons.Material.Filled.Diamond" Class="clp-accent-icon" />
+        <div class="clp-lol-copy">
+            <MudText Typo="Typo.h6">@T("Qualidade do loot", "Loot quality")</MudText>
+            <MudText Typo="Typo.body2" Class="spt-muted">
+                @T("Deixa itens mais valiosos ou mais raros mais comuns nos contêineres e no loot solto. A quantidade de itens não muda, só o que aparece. Os itens da sua lista continuam com a chance exata que você configurou.",
+                   "Makes more valuable or rarer items more common in containers and loose loot. The amount of items stays the same, only what shows up changes. Items on your list keep the exact chance you set.")
+            </MudText>
+        </div>
+        <MudSwitch T="bool" Value="@Quality.Enabled" ValueChanged="@(v => Change(() => Quality.Enabled = v))" Color="Color.Warning"
+                   Label="@(Quality.Enabled ? T("Ligado", "On") : T("Desligado", "Off"))" />
+    </div>
+
+    @if (expanded || Quality.Enabled)
+    {
+        <MudText Typo="Typo.subtitle2" Class="clp-lol-question">@T("Reforçar por", "Boost by")</MudText>
+        <div class="clp-lol-options" role="radiogroup">
+            @foreach (var basis in new[] { QualityBasis.Value, QualityBasis.Rarity })
+            {
+                var on = Quality.Basis == basis;
+                <button type="button" role="radio" aria-checked="@on" class="@($"clp-lol-option {(on ? "clp-lol-option-on" : "")}")"
+                        @onclick="() => Change(() => Quality.Basis = basis)">
+                    <span class="clp-lol-radio"></span>
+                    <span class="clp-lol-option-copy">
+                        @if (basis == QualityBasis.Value)
+                        {
+                            <strong>@T("Valor", "Value")</strong>
+                            <span>@T("Faixas de preço em rublos (flea, ou handbook quando o item não tem preço no flea).", "Price tiers in roubles (flea, or handbook when the item has no flea price).")</span>
+                        }
+                        else
+                        {
+                            <strong>@T("Raridade", "Rarity")</strong>
+                            <span>@T("A raridade que o próprio jogo dá a cada item: Common, Rare e Superrare.", "The rarity the game itself gives each item: Common, Rare and Superrare.")</span>
+                        }
+                    </span>
+                </button>
+            }
+        </div>
+
+        <div class="clp-quality-tiers">
+            @if (Quality.Basis == QualityBasis.Value)
+            {
+                @for (int i = 0; i < Quality.ValueTiers.Count; i++)
+                {
+                    var tier = Quality.ValueTiers[i];
+                    var first = i == 0;
+                    <div class="clp-quality-tier">
+                        <span class="clp-field-label">@TierLabel(i)</span>
+                        <MudNumericField T="int" Value="@tier.From" ValueChanged="@(v => Change(() => tier.From = Math.Max(1, v)))" Disabled="@first"
+                                         Min="0" Step="5000" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentText="@T("a partir de ₽", "from ₽")"
+                                         HideSpinButtons="true" Class="clp-quality-from" />
+                        <MudNumericField T="double" Value="@tier.Multiplier" ValueChanged="@(v => Change(() => tier.Multiplier = Math.Clamp(v, 0, 10)))"
+                                         Min="0" Max="10" Step="0.5" Format="0.##" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentText="×"
+                                         HideSpinButtons="true" Class="clp-quality-mult" />
+                        @if (!first)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@T("Remover faixa", "Remove tier")"
+                                           OnClick="@(() => Change(() => Quality.ValueTiers.Remove(tier)))" />
+                        }
+                    </div>
+                }
+                @if (Quality.ValueTiers.Count < 6)
+                {
+                    <button type="button" class="clp-link" @onclick="AddTier">
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" /> @T("Adicionar faixa", "Add tier")
+                    </button>
+                }
+            }
+            else
+            {
+                @foreach (var (label, get, set) in RarityFields())
+                {
+                    <div class="clp-quality-tier">
+                        <span class="clp-field-label">@label</span>
+                        <MudNumericField T="double" Value="@get()" ValueChanged="@(v => Change(() => set(Math.Clamp(v, 0, 10))))"
+                                         Min="0" Max="10" Step="0.5" Format="0.##" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentText="×"
+                                         HideSpinButtons="true" Class="clp-quality-mult" />
+                    </div>
+                }
+            }
+            <span class="clp-help">@T("×1 deixa como no jogo, ×2 dobra a chance da faixa, ×0,5 corta pela metade e ×0 tira a faixa do loot.", "×1 keeps vanilla, ×2 doubles the tier's chance, ×0.5 halves it and ×0 removes the tier from the loot.")</span>
+        </div>
+
+        <div class="clp-row">
+            <span class="clp-row-label"><MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" /> @T("Onde", "Where")</span>
+            <div class="clp-quality-checks">
+                <MudCheckBox T="bool" Value="@Quality.Containers" ValueChanged="@(v => Change(() => Quality.Containers = v))" Color="Color.Warning" Label="@T("Contêineres", "Containers")" />
+                <MudCheckBox T="bool" Value="@Quality.LooseLoot" ValueChanged="@(v => Change(() => Quality.LooseLoot = v))" Color="Color.Warning" Label="@T("Loot solto", "Loose loot")" />
+                <MudCheckBox T="bool" Value="@Quality.ExcludeKeys" ValueChanged="@(v => Change(() => Quality.ExcludeKeys = v))" Color="Color.Warning" Label="@T("Não mexer em chaves e keycards", "Leave keys and keycards alone")" />
+            </div>
+        </div>
+        <div class="clp-row">
+            <span class="clp-row-label"><MudIcon Icon="@Icons.Material.Filled.Map" Size="Size.Small" /> @T("Mapas", "Maps")</span>
+            <MapPicker Maps="@Maps" Value="@Quality.Maps" ValueChanged="@(v => Change(() => Quality.Maps = v))" Pt="@Pt" />
+        </div>
+        <span class="clp-help">@T("No loot solto, o reforço só troca itens dentro de cada ponto de spawn. Itens maiores às vezes não cabem no contêiner e o jogo sorteia outro.",
+                                 "In loose loot, the boost only reweights items within each spawn spot. Bigger items sometimes don't fit a container and the game rolls another one.")</span>
+
+        <div class="clp-lol-footer">
+            <button type="button" class="clp-similar-toggle clp-lol-details" @onclick="() => showPreview = !showPreview">
+                @(showPreview ? T("Esconder prévia por mapa", "Hide preview per map") : T("Ver prévia por mapa", "Show preview per map"))
+            </button>
+            <span class="spt-muted">@T("Dica: \"Simular raids\" num item também usa estas configurações, mesmo antes de salvar.", "Tip: \"Simulate raids\" on an item also uses these settings, even before saving.")</span>
+        </div>
+
+        @if (showPreview)
+        {
+            var rows = Preview();
+            @if (rows is null)
+            {
+                <span class="spt-muted">@T("Carregando os pools dos mapas...", "Loading the map pools...")</span>
+            }
+            else if (rows.Count == 0)
+            {
+                <span class="spt-muted">@T("Nenhum mapa ou fonte selecionado.", "No map or source selected.")</span>
+            }
+            else
+            {
+                <div class="clp-quality-table-wrap">
+                    <table class="clp-quality-table">
+                        <thead>
+                            <tr>
+                                <th>@T("Mapa", "Map")</th>
+                                <th>@T("Valor médio por item", "Average value per item")</th>
+                                @for (int i = 0; i < rows[0].Tiers.Count; i++)
+                                {
+                                    <th>@TierLabel(i)</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in rows)
+                            {
+                                <tr>
+                                    <td>@row.MapName</td>
+                                    <td>@Money(row.ValueBefore) → <strong>@Money(row.ValueAfter)</strong> @Delta(row.ValueBefore, row.ValueAfter)</td>
+                                    @foreach (var share in row.Tiers)
+                                    {
+                                        <td>@share.Before.ToString("0.0")% → <strong>@share.After.ToString("0.0")%</strong></td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <span class="clp-help">@T("Média de todos os tipos de contêiner e pontos de loot solto do mapa, cada um contado uma vez. Não inclui os itens da sua lista.",
+                                         "Average over every container type and loose loot spot of the map, each one counted once. Your list's items are not included.")</span>
+            }
+        }
+    }
+    else
+    {
+        <button type="button" class="clp-similar-toggle clp-lol-details" @onclick="() => expanded = true">@T("Ver opções", "Show options")</button>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public QualitySettings Quality { get; set; } = new();
+    [Parameter, EditorRequired] public IEnumerable<string> Maps { get; set; } = [];
+    [Parameter] public bool Pt { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private bool expanded;
+    private bool showPreview;
+    private string? previewKey;
+    private List<QualityPreviewRow>? previewRows;
+
+    private string T(string pt, string en) => Pt ? pt : en;
+
+    private async Task Change(Action change)
+    {
+        change();
+        Quality.ValueTiers = Quality.ValueTiers.OrderBy(tier => tier.From).ToList();
+        // Two tiers on the same price would fail validation on save
+        for (int i = 1; i < Quality.ValueTiers.Count; i++)
+        {
+            Quality.ValueTiers[i].From = Math.Max(Quality.ValueTiers[i].From, Quality.ValueTiers[i - 1].From + 1);
+        }
+        await OnChanged.InvokeAsync();
+    }
+
+    private Task AddTier()
+    {
+        int next = Quality.ValueTiers.Max(tier => tier.From) * 2;
+        return Change(() => Quality.ValueTiers.Add(new ValueTier { From = Math.Max(10000, next), Multiplier = 1 }));
+    }
+
+    private IEnumerable<(string Label, Func<double> Get, Action<double> Set)> RarityFields() =>
+    [
+        ("Common", () => Quality.CommonMultiplier, v => Quality.CommonMultiplier = v),
+        ("Rare", () => Quality.RareMultiplier, v => Quality.RareMultiplier = v),
+        ("Superrare", () => Quality.SuperrareMultiplier, v => Quality.SuperrareMultiplier = v),
+    ];
+
+    private string TierLabel(int index)
+    {
+        if (Quality.Basis == QualityBasis.Rarity)
+        {
+            return index switch { 0 => "Common", 1 => "Rare", 2 => "Superrare", _ => T("Sem raridade", "No rarity") };
+        }
+
+        var tiers = Quality.ValueTiers;
+        if (index >= tiers.Count) return "";
+        return index == tiers.Count - 1
+            ? $"≥ {Short(tiers[index].From)}"
+            : index == 0 ? $"< {Short(tiers[1].From)}" : $"{Short(tiers[index].From)} {T("a", "to")} {Short(tiers[index + 1].From)}";
+    }
+
+    private static string Short(double value) => value >= 1_000_000 ? $"{value / 1_000_000:0.#}M" : value >= 1000 ? $"{value / 1000:0.#}k" : value.ToString("0");
+
+    private static string Money(double value) => "₽" + Short(Math.Round(value));
+
+    private static MarkupString Delta(double before, double after)
+    {
+        if (before <= 0) return new("");
+        double change = (after / before - 1) * 100;
+        string css = change > 0.05 ? "clp-quality-up" : change < -0.05 ? "clp-quality-down" : "spt-muted";
+        return new($"<span class=\"{css}\">({change:+0;-0;0}%)</span>");
+    }
+
+    private List<QualityPreviewRow>? Preview()
+    {
+        string key = JsonSerializer.Serialize(Quality);
+        if (key != previewKey || previewRows is null)
+        {
+            previewRows = Injection.QualityPreview(Quality);
+            previewKey = previewRows is null ? null : key;
+        }
+
+        return previewRows;
+    }
+}

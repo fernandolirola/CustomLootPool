@@ -12,6 +12,7 @@ Server mod for **SPT 4.1.6+ (4.1.x)** that lets you add any item to the map loot
 - **Pick loot pools**: choose any categories (Electronics, Keys, Jewelry, the whole Barter items group...) and the item joins the pools where those items spawn.
 - **Simulate raids**: runs SPT's real loot generator and shows the average amount per raid on each map, even before saving.
 - **Loot Atlas**: interactive Tarkov.dev maps with floors, container and loose-loot layers, landmark labels, and density cells. Compare eligible locations with 25 or 100 simulated raids using the editor settings. Scroll to zoom and drag to pan.
+- **Loot quality**: make valuable or rare items more common in containers and loose loot, by price tier or by the game's own rarity, on all maps or only some. The amount of loot stays the same, and items on your list keep their exact chance.
 - **Lots of Loot aware**: shows how much each map's loot is multiplied and lets you choose: let your items grow with Lots of Loot, or keep the vanilla amount.
 - **More sources**: bot inventories (Scavs, PMCs, bosses and guards; backpack, pockets, vest) and airdrop crates.
 - **At least 1 per raid**: one guaranteed copy at a random loose loot spot every raid.
@@ -88,6 +89,26 @@ on the page. It applies map spawn caps independently for each simulated raid.
 Zero observations in a small random sample do not establish a zero spawn chance.
 Bot/airdrop map filters use the request's session, with no shared last-map value.
 
+### Loot quality
+
+The **Loot quality** card multiplies the weight of every item in container and
+loose loot pools, then keeps each pool's total, so the same number of items
+spawn and only their mix changes.
+
+- **Value**: price tiers in roubles (flea price, or handbook price when the flea
+  has none). Defaults: under 10k ×1, 10k to 50k ×1, 50k to 150k ×2, 150k and up ×3.
+  Items with no known price are left alone.
+- **Rarity**: the game's own rarity (Common, Rare, Superrare). Default: Superrare ×2.
+- ×1 keeps vanilla, ×0.5 halves a tier and ×0 removes it from the loot.
+- Keys and keycards are left alone by default.
+
+The boost runs before your list's chances, so configured items still take
+exactly their share. In loose loot it only reweights items within each spawn
+spot. Bigger items sometimes don't fit a container and the game rolls another.
+The card's preview shows, per map, each tier's share and the average item value
+before and after. With the defaults, the share of items worth 50k or more in
+Customs containers roughly doubles. Simulations use the card's unsaved settings.
+
 ### Example: recreating the Smugglers event
 
 Click the **Smugglers event** preset, or add **Locked case** (`6740987b89d5e1ddc603f4f0`) and **Case key** (`67449b6c89d5e1ddc603f504`) yourself.
@@ -140,6 +161,7 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 - Modo **itens parecidos**: o item só entra onde já spawnam itens da mesma categoria. A página mostra o lootpool, itens de exemplo (passe o mouse para ver a chance) e os contêineres alcançados.
 - **Escolher lootpools**: escolha qualquer categoria (Eletrônicos, Chaves, Joias, o grupo inteiro de itens de troca...) e o item entra nos pools onde esses itens spawnam.
 - **Simular raids**: roda o gerador de loot real do SPT e mostra a média por raid em cada mapa, mesmo antes de salvar.
+- **Qualidade do loot**: deixa itens valiosos ou raros mais comuns nos contêineres e no loot solto, por faixa de preço ou pela raridade do próprio jogo, em todos os mapas ou só em alguns. A quantidade de loot não muda e os itens da sua lista mantêm a chance exata.
 - **Compatível com Lots of Loot**: mostra quanto o loot de cada mapa é multiplicado e deixa você escolher: seus itens crescem junto com o Lots of Loot ou mantêm a quantidade do jogo original.
 - **Mais fontes**: inventário dos bots (Scavs, PMCs, bosses e guardas; mochila, bolsos, colete) e caixas de airdrop.
 - **Pelo menos 1 por raid**: uma cópia garantida em um ponto de loot solto aleatório a cada raid.
@@ -171,6 +193,27 @@ ocorrências não prova que a chance seja zero.
 1. Inicie o servidor SPT.
 2. Abra `https://127.0.0.1:6969/customlootpool` (ou o painel do servidor em `https://127.0.0.1:6969` → Custom Loot Pool).
 3. Adicione itens, ajuste mapas / onde / chance e clique em **Salvar**.
+
+### Qualidade do loot
+
+O cartão **Qualidade do loot** multiplica o peso de cada item nos pools de
+contêineres e de loot solto e mantém o total de cada pool. Aparece a mesma
+quantidade de itens, só muda a mistura.
+
+- **Valor**: faixas de preço em rublos (preço do flea, ou do handbook quando o
+  item não tem preço no flea). Padrão: até 10k ×1, de 10k a 50k ×1, de 50k a
+  150k ×2, a partir de 150k ×3. Itens sem preço conhecido não mudam.
+- **Raridade**: a raridade do próprio jogo (Common, Rare, Superrare). Padrão: Superrare ×2.
+- ×1 deixa como no jogo, ×0,5 corta a faixa pela metade e ×0 tira a faixa do loot.
+- Chaves e keycards ficam de fora por padrão.
+
+O reforço é aplicado antes das chances da sua lista, então os itens configurados
+continuam com a fatia exata. No loot solto, ele só troca itens dentro de cada
+ponto de spawn. Itens maiores às vezes não cabem no contêiner e o jogo sorteia
+outro. A prévia do cartão mostra, por mapa, a fatia de cada faixa e o valor médio
+por item antes e depois. Com o padrão, a fatia de itens de 50k ou mais nos
+contêineres de Customs praticamente dobra. A simulação usa as configurações do
+cartão mesmo antes de salvar.
 
 ### Exemplo: recriar o evento dos Smugglers
 

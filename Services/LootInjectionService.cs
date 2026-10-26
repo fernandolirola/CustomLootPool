@@ -40,6 +40,11 @@ public sealed record SimilarPool(string CategoryName, List<PoolItem> Items, List
 
 public sealed record MapReach(string MapId, string MapName, int ContainerTypes, List<string> ContainerNames, int Spawnpoints);
 
+public sealed record QualityTierShare(int Tier, double Before, double After);
+
+/// <summary>Averages over every container type and loose loot spot of the map, each one counted once</summary>
+public sealed record QualityPreviewRow(string MapId, string MapName, double ValueBefore, double ValueAfter, List<QualityTierShare> Tiers);
+
 /// <summary>
 /// Map loot is lazy-loaded by SPT, so items are injected through LazyLoad transformers
 /// that run whenever SPT builds the loot data, instead of editing the database once
@@ -74,6 +79,12 @@ public class LootInjectionService(
 
     [ThreadStatic]
     private static bool? _simCompensate;
+
+    [ThreadStatic]
+    private static QualitySettings? _simQuality;
+
+    private const string KeyCategoryId = "543be5e94bdc2df1388b4567";
+    private Dictionary<MongoId, double>? _handbookPrices;
 
     private static readonly SemaphoreSlim SimLock = new(1, 1);
 
@@ -241,14 +252,39 @@ public class LootInjectionService(
 
     private static double ClampChance(double chance) => Math.Clamp(chance, 0.001, MaxChance);
 
+    /// <summary>Flea price, or the handbook price when the flea has none</summary>
+    public double PriceOf(MongoId tpl)
+    {
+        if (templateTable.Prices?.TryGetValue(tpl, out double price) == true && price > 0) return price;
+        _handbookPrices ??= templateTable.Handbook?.Items?.GroupBy(item => item.Id).ToDictionary(group => group.Key, group => group.First().Price ?? 0) ?? [];
+        return _handbookPrices.GetValueOrDefault(tpl);
+    }
+
+    private string? RarityOf(MongoId tpl) => templateTable.Items.TryGetValue(tpl, out var template) ? template.Properties?.RarityPvE : null;
+
+    private Func<MongoId, double> QualityMultiplierFor(QualitySettings quality) => tpl =>
+        quality.ExcludeKeys && AncestorsOf(tpl).Contains(KeyCategoryId) ? 1
+        : quality.Basis == QualityBasis.Value ? QualityWeights.ForValue(quality.ValueTiers, PriceOf(tpl))
+        : QualityWeights.ForRarity(quality, RarityOf(tpl));
+
+    private Func<MongoId, double>? QualityMultiplier(string mapId, bool loose)
+    {
+        var cfg = configService.Config;
+        var quality = _simQuality ?? (cfg.Enabled ? cfg.Quality : null);
+        if (quality is not { Enabled: true } || !quality.AllowsMap(mapId) || !(loose ? quality.LooseLoot : quality.Containers)) return null;
+        return QualityMultiplierFor(quality);
+    }
+
     private List<string> ApplyStatic(string mapId, Dictionary<MongoId, StaticLootDetails> data)
     {
         var entries = EntriesFor(mapId)
             .Where(e => e.Static.Enabled && ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) > 0)
             .Select(e => (entry: e, item: catalog.Get(e.Tpl)!, chance: ClampChance(ChanceFor(e.Static.ChancePercent, e.Static.MapChances, mapId) / (Compensate ? StaticRatio(mapId) : 1))))
             .ToList();
-        if (entries.Count == 0) return [];
+        var quality = QualityMultiplier(mapId, loose: false);
+        if (entries.Count == 0 && quality is null) return [];
         var counts = new int[entries.Count];
+        int boosted = 0;
         foreach (var (containerId, details) in data)
         {
             if (details?.ItemDistribution is null) continue;
@@ -262,9 +298,16 @@ public class LootInjectionService(
                 requested.Add(new(new MongoId(item.Id), chance));
                 counts[i]++;
             }
-            if (requested.Count == 0) continue;
+            if (requested.Count == 0 && quality is null) continue;
             var original = pool.GroupBy(item => item.Tpl).ToDictionary(group => group.Key, group => group.Sum(item => (double)(item.RelativeProbability ?? 0)));
-            var weights = PoolWeights.Calculate(original, requested);
+            if (requested.Count == 0 && original.Values.Sum() <= 0) continue;
+            // Quality goes first, so the configured items still get exactly their requested share
+            if (quality is not null)
+            {
+                original = QualityWeights.Apply(original, quality);
+                boosted++;
+            }
+            var weights = requested.Count > 0 ? PoolWeights.Calculate(original, requested) : Percentages(original);
             details.ItemDistribution = weights.Where(pair => pair.Value > 0).Select(pair =>
             {
                 var distribution = pool.FirstOrDefault(item => item.Tpl == pair.Key)
@@ -273,7 +316,15 @@ public class LootInjectionService(
                 return distribution;
             }).ToList();
         }
-        return entries.Select((entry, i) => $"{entry.item.Name} → {counts[i]} " + configService.L("tipos de contêiner", "container types")).ToList();
+        var summary = entries.Select((entry, i) => $"{entry.item.Name} → {counts[i]} " + configService.L("tipos de contêiner", "container types")).ToList();
+        if (boosted > 0) summary.Add(configService.L($"qualidade em {boosted} tipos de contêiner", $"quality on {boosted} container types"));
+        return summary;
+    }
+
+    private static Dictionary<T, double> Percentages<T>(Dictionary<T, double> weights) where T : notnull
+    {
+        double total = weights.Values.Sum();
+        return weights.ToDictionary(pair => pair.Key, pair => total > 0 ? pair.Value / total * 100 : 0);
     }
     private bool StaticMatches(StaticLootSettings settings, MongoId containerId, List<ItemDistribution> pool, CatalogItem item)
     {
@@ -313,8 +364,9 @@ public class LootInjectionService(
     private List<string> ApplyLoose(string mapId, LooseLoot data)
     {
         var entries = EntriesFor(mapId).Where(e => (e.Loose.Enabled && ChanceFor(e.Loose.ChancePercent, e.Loose.MapChances, mapId) > 0) || e.Guaranteed).ToList();
+        var quality = QualityMultiplier(mapId, loose: true);
         var summary = new List<string>();
-        if (entries.Count == 0 || data.Spawnpoints is null) return summary;
+        if ((entries.Count == 0 && quality is null) || data.Spawnpoints is null) return summary;
         var spawnpoints = data.Spawnpoints.ToList();
         data.Spawnpoints = spawnpoints;
         double ratio = LooseRatio(mapId, data.SpawnpointCount?.Mean ?? 0, CountRollableSpawnpoints(spawnpoints));
@@ -338,13 +390,14 @@ public class LootInjectionService(
             var matching = entries.Where(entry => entry.Loose.Enabled && ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId) > 0
                 && (entry.Loose.Mode == TargetMode.All || parents.Overlaps(TargetCategories(entry.Loose.Mode, entry.Loose.Categories, catalog.Get(entry.Tpl)!))))
                 .GroupBy(entry => entry.Tpl).ToDictionary(group => group.Key, group => ClampChance(group.Max(entry => ChanceFor(entry.Loose.ChancePercent, entry.Loose.MapChances, mapId)) / (Compensate ? ratio : 1)));
-            if (matching.Count == 0) continue;
+            if (matching.Count == 0 && quality is null) continue;
             var roots = sp.Template!.Items!.Where(item => item.ComposedKey is not null).GroupBy(item => item.ComposedKey!).ToDictionary(group => group.Key, group => group.First());
             var distributions = sp.ItemDistribution!.Where(item => item.ComposedKey?.Key is not null && roots.ContainsKey(item.ComposedKey.Key)).ToList();
             var original = distributions.GroupBy(item => roots[item.ComposedKey!.Key!].Template.ToString())
                 .ToDictionary(group => group.Key, group => group.Sum(item => item.RelativeProbability ?? 0));
             if (original.Values.Sum() <= 0) continue;
-            var weights = PoolWeights.Calculate(original, matching);
+            if (quality is not null) original = QualityWeights.Apply(original, tpl => quality(new MongoId(tpl)));
+            var weights = matching.Count > 0 ? PoolWeights.Calculate(original, matching) : original;
             foreach (var (tpl, chance) in matching)
             {
                 if (original.ContainsKey(tpl)) continue;
@@ -365,7 +418,7 @@ public class LootInjectionService(
             count++;
         }
         if (forced.Count > 0) data.SpawnpointsForced = (data.SpawnpointsForced ?? []).Concat(forced).ToList();
-        if (count > 0) summary.Add($"{count} " + configService.L("pontos de spawn ajustados", "spawn points adjusted"));
+        if (count > 0) summary.Add($"{count} " + configService.L("pontos de spawn ajustados", "spawn points adjusted") + (quality is null ? "" : configService.L(" (com qualidade)", " (with quality)")));
         return summary;
     }
     /// <summary>
@@ -489,6 +542,7 @@ public class LootInjectionService(
                     _simEntry = sim;
                     _simEntries = simulationConfig.Entries;
                     _simCompensate = compensate;
+                    _simQuality = context is null ? configService.Config.Quality : simulationConfig.Quality;
                     try
                     {
                         for (int i = 0; i < raids; i++)
@@ -518,6 +572,7 @@ public class LootInjectionService(
                         _simEntry = null;
                         _simEntries = null;
                         _simCompensate = null;
+                        _simQuality = null;
                     }
                 }, ct);
 
@@ -824,6 +879,9 @@ public class LootInjectionService(
         public Dictionary<string, (double Mean, int Points)> LooseStats { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, HashSet<string>> MapContainers { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> LooseSpotCount { get; } = new(StringComparer.OrdinalIgnoreCase);
+        // Raw weights per container type and per loose loot spot, for the quality preview
+        public Dictionary<string, List<Dictionary<MongoId, double>>> StaticPools { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, List<Dictionary<MongoId, double>>> LoosePools { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private Task<PoolIndex>? _poolIndex;
@@ -878,6 +936,7 @@ public class LootInjectionService(
                     }
 
                     mapContainers.Add(containerId.ToString());
+                    PoolList(index.StaticPools, mapId).Add(pool.GroupBy(d => d.Tpl).ToDictionary(g => g.Key, g => g.Sum(d => (double)(d.RelativeProbability ?? 0))));
 
                     foreach (var dist in pool)
                     {
@@ -919,6 +978,11 @@ public class LootInjectionService(
                         .ToDictionary(g => g.Key, g => g.Sum(d => d.RelativeProbability ?? 0));
                     double total = weights.Values.Sum();
                     var roots = sp.Template.Items.Where(i => i.ComposedKey is not null).ToList();
+                    if (total > 0)
+                    {
+                        PoolList(index.LoosePools, mapId).Add(roots.GroupBy(r => r.Template)
+                            .ToDictionary(g => g.Key, g => g.Sum(r => weights.GetValueOrDefault(r.ComposedKey!))));
+                    }
 
                     foreach (var root in roots)
                     {
@@ -985,6 +1049,70 @@ public class LootInjectionService(
         }
 
         return lazy.Value;
+    }
+
+    private static List<Dictionary<MongoId, double>> PoolList(Dictionary<string, List<Dictionary<MongoId, double>>> source, string mapId)
+    {
+        if (!source.TryGetValue(mapId, out var list))
+        {
+            list = [];
+            source[mapId] = list;
+        }
+
+        return list;
+    }
+
+    /// <summary>Tier shares and the average item value per map, before and after the given quality settings</summary>
+    public List<QualityPreviewRow>? QualityPreview(QualitySettings quality)
+    {
+        if (!PoolIndexReady)
+        {
+            return null;
+        }
+
+        var index = _poolIndex!.Result;
+        var multiplier = QualityMultiplierFor(quality);
+        int tierCount = quality.Basis == QualityBasis.Value ? quality.ValueTiers.Count : 4;
+        int TierOf(MongoId tpl) => quality.Basis == QualityBasis.Value
+            ? QualityWeights.ValueTierOf(quality.ValueTiers, PriceOf(tpl))
+            : QualityWeights.RarityTierOf(RarityOf(tpl));
+
+        var rows = new List<QualityPreviewRow>();
+        foreach (string mapId in _maps.Keys.Where(quality.AllowsMap).OrderBy(MapName))
+        {
+            var pools = (quality.Containers ? index.StaticPools.GetValueOrDefault(mapId) ?? [] : [])
+                .Concat(quality.LooseLoot ? index.LoosePools.GetValueOrDefault(mapId) ?? [] : [])
+                .ToList();
+            if (pools.Count == 0)
+            {
+                continue;
+            }
+
+            var before = new double[tierCount];
+            var after = new double[tierCount];
+            double valueBefore = 0, valueAfter = 0;
+            foreach (var pool in pools)
+            {
+                Accumulate(pool, before, ref valueBefore);
+                Accumulate(QualityWeights.Apply(pool, multiplier), after, ref valueAfter);
+            }
+
+            rows.Add(new QualityPreviewRow(mapId, MapName(mapId), valueBefore / pools.Count, valueAfter / pools.Count,
+                Enumerable.Range(0, tierCount).Select(tier => new QualityTierShare(tier, before[tier] / pools.Count * 100, after[tier] / pools.Count * 100)).ToList()));
+        }
+
+        return rows;
+
+        void Accumulate(IReadOnlyDictionary<MongoId, double> pool, double[] shares, ref double value)
+        {
+            double total = pool.Values.Sum();
+            if (total <= 0) return;
+            foreach (var (tpl, weight) in pool)
+            {
+                shares[TierOf(tpl)] += weight / total;
+                value += weight / total * PriceOf(tpl);
+            }
+        }
     }
 
     private static Dictionary<string, T> Bucket<T>(Dictionary<string, Dictionary<string, T>> source, string key)

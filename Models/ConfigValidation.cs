@@ -67,8 +67,27 @@ internal static class ConfigValidation
                 entry.Schedule.To = Day(entry.Schedule.To, path + ".Schedule.To");
             }
         }
+        Quality(config);
         return config;
     }
+
+    private static void Quality(LootPoolConfig config)
+    {
+        config.Quality ??= new QualitySettings();
+        var quality = config.Quality;
+        Require(Enum.IsDefined(quality.Basis), "Quality.Basis must be Value or Rarity.");
+        quality.Maps = Strings(quality.Maps, "Quality.Maps");
+        Require(quality.ValueTiers is { Count: > 0 } && quality.ValueTiers.All(tier => tier is not null), "Quality.ValueTiers must contain at least one tier.");
+        quality.ValueTiers = quality.ValueTiers.OrderBy(tier => tier.From).ToList();
+        Require(quality.ValueTiers[0].From == 0, "Quality.ValueTiers must start at 0.");
+        Require(quality.ValueTiers.Select(tier => tier.From).Distinct().Count() == quality.ValueTiers.Count, "Quality.ValueTiers cannot repeat a price.");
+        foreach (var tier in quality.ValueTiers) Multiplier(tier.Multiplier, "Quality.ValueTiers.Multiplier");
+        Multiplier(quality.CommonMultiplier, "Quality.CommonMultiplier");
+        Multiplier(quality.RareMultiplier, "Quality.RareMultiplier");
+        Multiplier(quality.SuperrareMultiplier, "Quality.SuperrareMultiplier");
+    }
+
+    private static void Multiplier(double value, string path) => Require(double.IsFinite(value) && value >= 0 && value <= 10, $"{path} must be between 0 and 10.");
 
     private static Dictionary<string, double> Chances(Dictionary<string, double> source, string path)
     {

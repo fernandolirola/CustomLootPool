@@ -117,6 +117,8 @@
             </MudPaper>
         }
 
+        <QualityCard Quality="@working.Quality" Maps="@AllMaps" Pt="@IsPt" OnChanged="@(() => sims.Clear())" />
+
         <div class="clp-add-row">
             <MudPaper Elevation="0" Class="clp-add spt-panel pa-5">
                 <div class="clp-section-head">
