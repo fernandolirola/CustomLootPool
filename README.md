@@ -100,7 +100,8 @@ spawn and only their mix changes.
   Items with no known price are left alone.
 - **Rarity**: the game's own rarity (Common, Rare, Superrare). Default: Superrare ×2.
 - ×1 keeps vanilla, ×0.5 halves a tier and ×0 removes it from the loot.
-- Keys and keycards are left alone by default.
+- Keys and keycards (by default) and quest items keep their exact chance, even
+  in spots they share with boosted items.
 
 The boost runs before your list's chances, so configured items still take
 exactly their share. In loose loot it only reweights items within each spawn
@@ -205,7 +206,8 @@ quantidade de itens, só muda a mistura.
   150k ×2, a partir de 150k ×3. Itens sem preço conhecido não mudam.
 - **Raridade**: a raridade do próprio jogo (Common, Rare, Superrare). Padrão: Superrare ×2.
 - ×1 deixa como no jogo, ×0,5 corta a faixa pela metade e ×0 tira a faixa do loot.
-- Chaves e keycards ficam de fora por padrão.
+- Chaves e keycards (por padrão) e itens de quest mantêm a chance exata, mesmo
+  nos pontos que dividem com itens reforçados.
 
 O reforço é aplicado antes das chances da sua lista, então os itens configurados
 continuam com a fatia exata. No loot solto, ele só troca itens dentro de cada

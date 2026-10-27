@@ -401,6 +401,37 @@ public class RegressionTests
         Assert.Equal(30, untouched[A]); Assert.Equal(70, untouched[B]);
     }
 
+    [Fact]
+    public void PinnedItemsKeepTheirWeightWhileTheRestIsScaled()
+    {
+        var weights = QualityWeights.Apply(new Dictionary<string, double> { [A] = 50, [B] = 25, [Vanilla] = 25 }, tpl => tpl == A ? null : tpl == B ? 3 : 1);
+        Assert.Equal(50, weights[A], 8);
+        Assert.Equal(37.5, weights[B], 8);
+        Assert.Equal(12.5, weights[Vanilla], 8);
+
+        var allPinned = QualityWeights.Apply(new Dictionary<string, double> { [A] = 30, [B] = 70 }, _ => null);
+        Assert.Equal(30, allPinned[A]); Assert.Equal(70, allPinned[B]);
+    }
+
+    [Theory]
+    [InlineData(true, false, 50)]
+    [InlineData(false, true, 50)]
+    [InlineData(false, false, 25)]
+    public void KeysAndQuestItemsDoNotGetRarerInSharedLooseSpots(bool key, bool questItem, double expected)
+    {
+        using var fixture = new Fixture(new() { Quality = new() { Enabled = true, Basis = QualityBasis.Value } });
+        fixture.Templates.Items[new(A)] = new TemplateItem
+        {
+            Parent = new(key ? "543be5e94bdc2df1388b4567" : Container),
+            Properties = new() { QuestItem = questItem },
+        };
+        typeof(TemplateTable).GetProperty("Prices")!.SetValue(fixture.Templates, new Dictionary<MongoId, double> { [new(A)] = 1_000, [new(Vanilla)] = 200_000 });
+
+        var spawn = Spawn();
+        Call(fixture.Injection, "ApplyLoose", "woods", new LooseLoot { Spawnpoints = [spawn] });
+        Assert.Equal(expected, spawn.ItemDistribution!.Single(item => item.ComposedKey!.Key == "existing-a").RelativeProbability!.Value, 6);
+    }
+
     [Theory]
     [InlineData(0, 1)]
     [InlineData(9_999, 1)]

@@ -1,5 +1,11 @@
 # Changes
 
+## 1.5.1
+
+### Fixes
+
+- Loot quality: keys (when left alone) and quest items got rarer in loose loot spots they share with boosted items, because the boost kept each pool's total. They now keep their exact chance and only the other items share the rest.
+
 ## 1.5.0
 
 ### New

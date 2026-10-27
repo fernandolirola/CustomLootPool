@@ -262,12 +262,13 @@ public class LootInjectionService(
 
     private string? RarityOf(MongoId tpl) => templateTable.Items.TryGetValue(tpl, out var template) ? template.Properties?.RarityPvE : null;
 
-    private Func<MongoId, double> QualityMultiplierFor(QualitySettings quality) => tpl =>
-        quality.ExcludeKeys && AncestorsOf(tpl).Contains(KeyCategoryId) ? 1
+    /// <summary>Quest items and excluded keys are pinned, so boosting the rest of a shared spot can't make them rarer</summary>
+    private Func<MongoId, double?> QualityMultiplierFor(QualitySettings quality) => tpl =>
+        (templateTable.Items.TryGetValue(tpl, out var template) && template.IsQuestItem()) || (quality.ExcludeKeys && AncestorsOf(tpl).Contains(KeyCategoryId)) ? null
         : quality.Basis == QualityBasis.Value ? QualityWeights.ForValue(quality.ValueTiers, PriceOf(tpl))
         : QualityWeights.ForRarity(quality, RarityOf(tpl));
 
-    private Func<MongoId, double>? QualityMultiplier(string mapId, bool loose)
+    private Func<MongoId, double?>? QualityMultiplier(string mapId, bool loose)
     {
         var cfg = configService.Config;
         var quality = _simQuality ?? (cfg.Enabled ? cfg.Quality : null);

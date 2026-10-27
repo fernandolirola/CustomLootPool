@@ -34,14 +34,16 @@ internal static class QualityWeights
         _ => 1,
     };
 
-    internal static Dictionary<T, double> Apply<T>(IReadOnlyDictionary<T, double> weights, Func<T, double> multiplier) where T : notnull
+    /// <summary>A null multiplier pins the item: it keeps its weight and only the other items share the rest</summary>
+    internal static Dictionary<T, double> Apply<T>(IReadOnlyDictionary<T, double> weights, Func<T, double?> multiplier) where T : notnull
     {
-        double before = weights.Values.Sum(value => Math.Max(0, value));
-        var scaled = weights.ToDictionary(pair => pair.Key, pair => Math.Max(0, pair.Value) * multiplier(pair.Key));
-        double after = scaled.Values.Sum();
+        var factors = weights.Keys.ToDictionary(key => key, multiplier);
+        double before = weights.Where(pair => factors[pair.Key] is not null).Sum(pair => Math.Max(0, pair.Value));
+        var scaled = weights.ToDictionary(pair => pair.Key, pair => Math.Max(0, pair.Value) * (factors[pair.Key] ?? 1));
+        double after = scaled.Where(pair => factors[pair.Key] is not null).Sum(pair => pair.Value);
 
         // Every item at x0 would leave an empty pool, so the pool stays as it was
         if (before <= 0 || after <= 0) return new(weights);
-        return scaled.ToDictionary(pair => pair.Key, pair => pair.Value / after * before);
+        return scaled.ToDictionary(pair => pair.Key, pair => factors[pair.Key] is null ? pair.Value : pair.Value / after * before);
     }
 }
