@@ -1,5 +1,12 @@
 # Changes
 
+## 1.5.2
+
+### Fixes
+
+- Loot quality: changing only the loot quality settings now enables Save. Before, the page didn't count them as unsaved changes, so Save stayed greyed out.
+- Loot quality: "Leave keys and keycards alone" now works. It looked for the wrong key category, so keys and keycards were boosted like any other item.
+
 ## 1.5.1
 
 ### Fixes

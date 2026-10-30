@@ -422,7 +422,7 @@ public class RegressionTests
         using var fixture = new Fixture(new() { Quality = new() { Enabled = true, Basis = QualityBasis.Value } });
         fixture.Templates.Items[new(A)] = new TemplateItem
         {
-            Parent = new(key ? "543be5e94bdc2df1388b4567" : Container),
+            Parent = new(key ? "543be5e94bdc2df1348b4568" : Container),
             Properties = new() { QuestItem = questItem },
         };
         typeof(TemplateTable).GetProperty("Prices")!.SetValue(fixture.Templates, new Dictionary<MongoId, double> { [new(A)] = 1_000, [new(Vanilla)] = 200_000 });

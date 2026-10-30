@@ -818,7 +818,7 @@
     // Language is saved on its own, so it never counts as an unsaved change
     private static string Serialize(LootPoolConfig cfg)
     {
-        return System.Text.Json.JsonSerializer.Serialize(new { cfg.Enabled, cfg.Debug, cfg.CompensateLootMultipliers, cfg.Entries });
+        return System.Text.Json.JsonSerializer.Serialize(new { cfg.Enabled, cfg.Debug, cfg.CompensateLootMultipliers, cfg.Quality, cfg.Entries });
     }
 
     private bool IsPt => ConfigService.IsPortuguese;

@@ -83,7 +83,7 @@ public class LootInjectionService(
     [ThreadStatic]
     private static QualitySettings? _simQuality;
 
-    private const string KeyCategoryId = "543be5e94bdc2df1388b4567";
+    private const string KeyCategoryId = "543be5e94bdc2df1348b4568";
     private Dictionary<MongoId, double>? _handbookPrices;
 
     private static readonly SemaphoreSlim SimLock = new(1, 1);
