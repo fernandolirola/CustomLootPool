@@ -223,3 +223,5 @@ Clique no preset **Evento dos Smugglers**, ou adicione **Locked case** (`6740987
 - Sealed box + Multitool → Workbench → Opened box (6 itens aleatórios)
 
 Os dois crafts já são liberados pelo próprio SPT.
+
+<sub>Enjoying the mod? Curtiu o mod? [Buy me a coffee on Ko-fi](https://ko-fi.com/zezinhoeft)</sub>
