@@ -26,8 +26,7 @@ Server mod for **SPT 4.1.6+ (4.1.x)** that lets you add any item to the map loot
 
 Download the release zip and extract it into your game folder (the one that contains `SPT_Runtime`), so you end up with `SPT_Runtime/user/mods/CustomLootPool`.
 
-The release ZIP includes a default `config.json` for new installations. When updating,
-keep your existing `config.json` instead of overwriting it with the default.
+The zip has no `config.json`: the server creates one with the defaults on first start, and updating keeps your settings.
 
 ## Usage
 
@@ -176,8 +175,7 @@ Mod de servidor para o **SPT 4.1** que permite adicionar qualquer item ao lootpo
 
 Baixe o zip da release e extraia na pasta do jogo (a que contém `SPT_Runtime`), ficando `SPT_Runtime/user/mods/CustomLootPool`.
 
-O ZIP inclui um `config.json` padrão para novas instalações. Ao atualizar, mantenha
-seu `config.json` existente em vez de substituí-lo pelo padrão.
+O zip não traz `config.json`: o servidor cria um com o padrão na primeira vez que inicia, e atualizar mantém suas configurações.
 
 As chances são calculadas juntas por pool. Ao atingir ou ultrapassar 100%, os
 itens configurados dividem todo o pool proporcionalmente. Se não houver outros

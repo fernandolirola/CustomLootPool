@@ -24,7 +24,8 @@
 
   <ItemGroup>
     <Content Remove="config.json" />
-    <None Include="config.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- not shipped: the server writes the defaults on first start, and a shipped copy would overwrite settings on update -->
+    <None Remove="config.json" />
     <Content Remove="wwwroot\**" />
     <None Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

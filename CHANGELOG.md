@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased
+
+### Changes
+
+- The zip no longer includes `config.json`. The server creates it with the defaults on first start, so updating never resets your settings.
+
 ## 1.5.2
 
 ### Fixes
